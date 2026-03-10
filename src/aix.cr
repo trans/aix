@@ -1,4 +1,4 @@
-require "./aix/terminal"
+require "./aix/tmux"
 require "./aix/session"
 require "./aix/session_manager"
 require "./aix/meta_console"
@@ -8,12 +8,12 @@ module Aix
   VERSION = "0.1.0"
 
   def self.run
+    # Ensure tmux session exists
+    Tmux.ensure_session
+
     manager = SessionManager.new
     console = MetaConsole.new(manager)
     passthrough = Passthrough.new
-
-    # Save original terminal state
-    Terminal.save
 
     puts "AIX v#{VERSION} — Claude Code multiplexer"
     puts "Type 'help' for commands.\n"
@@ -34,19 +34,14 @@ module Aix
         when :escape
           # Clean return to meta console
         when :session_ended
-          session.reap
-          if code = session.exit_status
-            puts "Session '#{session.name}' exited (#{code})."
-          else
-            puts "Session '#{session.name}' ended."
-          end
+          puts "Session '#{session.name}' ended."
         end
       end
     end
 
     # Cleanup
     manager.stop_all
-    Terminal.restore!
+    Tmux.kill_session if manager.sessions.all? { |s| !s.running? }
     puts "Goodbye."
   end
 end

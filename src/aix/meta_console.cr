@@ -172,7 +172,7 @@ module Aix
         help / ?               Show this help
         quit / exit            Exit AIX
 
-      In a session, press Tab then Enter to return here.
+      In a session, press F12 to return here.
       HELP
     end
   end

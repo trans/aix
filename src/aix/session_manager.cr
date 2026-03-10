@@ -1,5 +1,6 @@
 require "./session"
 require "./store"
+require "./tmux"
 
 module Aix
   class SessionManager
@@ -38,7 +39,6 @@ module Aix
       session = active
       raise "No active session" unless session
       raise "Session '#{session.name}' is already running" if session.running?
-      raise "Session '#{session.name}' has stopped" if session.state == SessionState::Stopped
       session.start(args)
       session
     end
@@ -61,6 +61,7 @@ module Aix
       session = @sessions.find { |s| s.name == old_name }
       raise "No session named '#{old_name}'" unless session
       raise "Session '#{new_name}' already exists" if @sessions.any? { |s| s.name == new_name }
+      Tmux.rename_window(old_name, new_name) if session.running?
       session.name = new_name
       persist
     end
@@ -69,10 +70,6 @@ module Aix
       @sessions.each do |s|
         s.stop if s.running?
       end
-    end
-
-    private def find!(name : String) : Session
-      @sessions.find { |s| s.name == name } || raise "No session named '#{name}'"
     end
 
     private def load_saved
