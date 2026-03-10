@@ -1,0 +1,17 @@
+name: aix
+version: 0.1.0
+
+authors:
+  - Thomas Sawyer <transfire@gmail.com>
+
+targets:
+  aix:
+    main: src/aix.cr
+
+dependencies:
+  fancyline:
+    github: Papierkorb/fancyline
+
+crystal: '>= 1.19.1'
+
+license: MIT
