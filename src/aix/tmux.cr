@@ -72,6 +72,25 @@ module Aix
       [] of String
     end
 
+    # Send keystrokes to a window's pane.
+    def self.send_keys(name : String, keys : String)
+      run("send-keys", "-t", "#{SESSION}:#{name}", keys, "Enter")
+    end
+
+    # Capture visible pane content. Optional line count scrolls back.
+    def self.capture_pane(name : String, lines : Int32? = nil) : String
+      args = ["capture-pane", "-t", "#{SESSION}:#{name}", "-p"]
+      if n = lines
+        args += ["-S", "-#{n}"]
+      end
+      output = IO::Memory.new
+      result = Process.run("tmux", args,
+        output: output,
+        error: Process::Redirect::Close)
+      raise "tmux capture-pane: failed" unless result.success?
+      output.to_s
+    end
+
     # Clean up — kill the whole session.
     def self.kill_session
       run("kill-session", "-t", SESSION) if session_exists?

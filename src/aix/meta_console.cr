@@ -12,7 +12,7 @@ module Aix
       # Tab-complete session names and commands
       @fancy.autocomplete.add do |ctx, range, word, yielder|
         completions = yielder.call(ctx, range, word)
-        commands = %w[add start list ls drop rename help quit exit]
+        commands = %w[add start list ls drop rename send peek help quit exit]
         names = @manager.sessions.map(&.name)
         (commands + names).each do |c|
           completions << Fancyline::Completion.new(range, c) if c.starts_with?(word)
@@ -45,6 +45,12 @@ module Aix
     end
 
     private def execute(line : String) : Symbol
+      # Shell passthrough: lines starting with $
+      if line.starts_with?("$")
+        cmd_shell(line[1..].strip)
+        return :continue
+      end
+
       parts = line.split(/\s+/, 2)
       cmd = parts[0].downcase
       args = parts[1]?
@@ -60,6 +66,10 @@ module Aix
         cmd_drop(args)
       when "rename"
         cmd_rename(args)
+      when "send"
+        cmd_send(args)
+      when "peek"
+        cmd_peek(args)
       when "help", "?"
         cmd_help
       when "quit", "exit"
@@ -160,6 +170,42 @@ module Aix
       end
     end
 
+    private def cmd_send(args : String?)
+      unless args
+        puts "Usage: send <text>"
+        return
+      end
+      session = @manager.active
+      unless session && session.running?
+        puts "No running session. Switch to one first."
+        return
+      end
+      Tmux.send_keys(session.name, args)
+    end
+
+    private def cmd_peek(args : String?)
+      session = @manager.active
+      unless session && session.running?
+        puts "No running session. Switch to one first."
+        return
+      end
+      lines = args.try(&.strip.to_i?)
+      puts Tmux.capture_pane(session.name, lines)
+    end
+
+    private def cmd_shell(cmd : String)
+      if cmd.empty?
+        puts "Usage: $ <command>"
+        return
+      end
+      dir = @manager.active.try(&.directory)
+      Process.run("sh", ["-c", cmd],
+        chdir: dir,
+        input: Process::Redirect::Inherit,
+        output: Process::Redirect::Inherit,
+        error: Process::Redirect::Inherit)
+    end
+
     private def cmd_help
       puts <<-HELP
       Commands:
@@ -169,6 +215,9 @@ module Aix
         list / ls              List sessions
         drop <name>            Stop and remove a session
         rename <old> <new>     Rename a session
+        send <text>            Send keystrokes to active session
+        peek [lines]           View active session output
+        $ <command>            Run a shell command
         help / ?               Show this help
         quit / exit            Exit AIX
 
