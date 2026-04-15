@@ -1,6 +1,6 @@
 pkgbase = aix
 	pkgdesc = Claude Code terminal multiplexer with TUI, web, and REPL modes
-	pkgver = 0.1.0
+	pkgver = 0.2.0
 	pkgrel = 1
 	url = https://github.com/trans/aix
 	arch = x86_64
@@ -16,7 +16,7 @@ pkgbase = aix
 	depends = libxml2
 	depends = sqlite
 	optdepends = claude-code: the LLM CLI that AIX multiplexes
-	source = aix-0.1.0::git+https://github.com/trans/aix.git#tag=v0.1.0
+	source = aix-0.2.0::git+https://github.com/trans/aix.git#tag=v0.2.0
 	sha256sums = SKIP
 
 pkgname = aix

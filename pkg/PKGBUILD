@@ -1,6 +1,6 @@
 # Maintainer: Thomas Sawyer <transfire@gmail.com>
 pkgname=aix
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc="Claude Code terminal multiplexer with TUI, web, and REPL modes"
 arch=('x86_64')

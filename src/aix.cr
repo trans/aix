@@ -7,7 +7,7 @@ require "./aix/passthrough"
 require "./aix/web_app"
 
 module Aix
-  VERSION = "0.1.0"
+  VERSION = "0.2.0"
 
   def self.run
     if ARGV.includes?("--web")
