@@ -6,3 +6,7 @@
 /aix
 /lib/
 /.codex
+/pkg/pkg/
+/pkg/src/
+/pkg/*.pkg.tar.*
+/pkg/*.log

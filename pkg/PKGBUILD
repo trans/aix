@@ -1,0 +1,30 @@
+# Maintainer: Thomas Sawyer <transfire@gmail.com>
+pkgname=aix
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Claude Code terminal multiplexer with TUI, web, and REPL modes"
+arch=('x86_64')
+url="https://github.com/trans/aix"
+license=('MIT')
+depends=('tmux' 'pcre2' 'libevent' 'gc' 'openssl' 'libxml2' 'sqlite')
+makedepends=('crystal' 'shards' 'git')
+optdepends=('claude-code: the LLM CLI that AIX multiplexes')
+source=("$pkgname-$pkgver::git+https://github.com/trans/aix.git#tag=v$pkgver")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "$pkgname-$pkgver"
+  shards install --production
+}
+
+build() {
+  cd "$pkgname-$pkgver"
+  shards build --release --no-debug
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm755 bin/aix "$pkgdir/usr/bin/aix"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}
