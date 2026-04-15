@@ -102,10 +102,11 @@ module Aix
       end
       parts = args.split(/\s+/, 2)
       dir = parts[0]
-      name = parts[1]? || File.basename(File.expand_path(parts[0]))
+      expanded_dir = SessionManager.expand_directory(dir)
+      name = parts[1]? || File.basename(expanded_dir)
       begin
         @manager.add(name, dir)
-        puts "Added '#{name}' (#{File.expand_path(dir)})"
+        puts "Added '#{name}' (#{expanded_dir})"
       rescue ex
         puts "Error: #{ex.message}"
       end

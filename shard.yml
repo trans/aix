@@ -11,6 +11,11 @@ targets:
 dependencies:
   fancyline:
     github: Papierkorb/fancyline
+  crt:
+    github: trans/crt
+    version: ~> 0.2.0
+  kemal:
+    github: kemalcr/kemal
 
 crystal: '>= 1.19.1'
 
