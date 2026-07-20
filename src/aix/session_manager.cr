@@ -1,15 +1,18 @@
 require "./session"
 require "./store"
 require "./tmux"
+require "./config"
 
 module Aix
   class SessionManager
     getter sessions : Array(Session)
+    getter config : Config
     property active_index : Int32 = -1
 
     def initialize
       @sessions = [] of Session
-      load_saved
+      @config = Config.load
+      refresh
     end
 
     def active : Session?
@@ -21,17 +24,42 @@ module Aix
       @sessions.find { |s| s.name == name }
     end
 
-    def add(name : String, directory : String) : Session
-      dir = self.class.expand_directory(directory)
-      raise "Directory not found: #{dir}" unless Dir.exists?(dir)
-      raise "Session '#{name}' already exists" if @sessions.any? { |s| s.name == name }
-
+    # Re-scan the configured roots and rebuild the session list. Existing
+    # session objects are preserved (keyed by directory) so running windows
+    # and captured Claude IDs survive a refresh; the resume-id cache is
+    # overlaid onto newly discovered projects.
+    def refresh
       active_session = active
-      session = Session.new(name, dir)
-      @sessions << session
+      discovered = @config.discover
+      by_dir = @sessions.index_by(&.directory)
+      resume = resume_ids
+
+      @sessions = discovered.map do |name, dir|
+        if existing = by_dir[dir]?
+          existing.name = name
+          existing
+        else
+          Session.new(name, dir, resume[dir]?)
+        end
+      end
+
       sort_sessions!(active_session)
-      persist_sessions
-      session
+    end
+
+    # Add a root path to the config and re-discover. Returns true if the
+    # root was newly added.
+    def add_root(path : String) : Bool
+      added = @config.add_root(path)
+      refresh if added
+      added
+    end
+
+    # Remove a root path from the config and re-discover. Returns true if a
+    # root was removed.
+    def remove_root(path : String) : Bool
+      removed = @config.remove_root(path)
+      refresh if removed
+      removed
     end
 
     def switch(name : String) : Session
@@ -57,29 +85,12 @@ module Aix
       session
     end
 
-    def remove(name : String)
-      idx = @sessions.index { |s| s.name == name }
-      raise "No session named '#{name}'" unless idx
-      session = @sessions[idx]
+    # Stop a session's tmux window. The project stays in the list (it is
+    # owned by discovery); it simply returns to a cold/stopped state.
+    def stop(name : String)
+      session = find(name)
+      raise "No session named '#{name}'" unless session
       session.stop if session.running?
-      @sessions.delete_at(idx)
-      if @sessions.empty?
-        @active_index = -1
-      elsif @active_index >= @sessions.size
-        @active_index = @sessions.size - 1
-      end
-      persist_sessions
-    end
-
-    def rename(old_name : String, new_name : String)
-      active_session = active
-      session = @sessions.find { |s| s.name == old_name }
-      raise "No session named '#{old_name}'" unless session
-      raise "Session '#{new_name}' already exists" if @sessions.any? { |s| s.name == new_name }
-      Tmux.rename_window(old_name, new_name) if session.running?
-      session.name = new_name
-      sort_sessions!(active_session)
-      persist_sessions
     end
 
     def stop_all
@@ -99,18 +110,17 @@ module Aix
       File.expand_path(path)
     end
 
-    private def load_saved
-      Store.load.each do |name, dir, claude_id|
-        next unless Dir.exists?(dir)
-        next if @sessions.any? { |s| s.name == name }
-        @sessions << Session.new(name, dir, claude_id)
-      end
-      sort_sessions!
-    end
-
+    # Persist the resume-id cache (Claude session IDs keyed by directory).
     def persist_sessions
       entries = @sessions.map { |s| {s.name, s.directory, s.claude_session_id} }
       Store.save(entries)
+    end
+
+    # Claude session IDs from the persisted cache, keyed by directory.
+    private def resume_ids : Hash(String, String?)
+      cache = {} of String => String?
+      Store.load.each { |_name, dir, cid| cache[dir] = cid }
+      cache
     end
 
     private def sort_sessions!(active_session : Session? = nil)

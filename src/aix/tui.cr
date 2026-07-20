@@ -73,7 +73,7 @@ module Aix
         # -- Footer bar --
         footer_y = sh - 1
         CRT::Label.new(screen, x: 0, y: footer_y, width: sw, height: 1,
-          text: " Enter:Open  a:Add  d:Drop  q:Quit", style: CRT.theme.field)
+          text: " Enter:Open  a:Add Root  d:Stop  q:Quit", style: CRT.theme.field)
 
         # -- Sync resume checkbox with session state --
         sync_resume = ->(index : Int32) {
@@ -147,7 +147,7 @@ module Aix
                   index = list.selected
                   session = @manager.sessions[index]?
                   if session
-                    @manager.remove(session.name)
+                    @manager.stop(session.name)
                     refresh = true
                   end
                 end
@@ -172,7 +172,8 @@ module Aix
       :quit
     end
 
-    # Screen for adding a new project.
+    # Screen for adding a new root path. Projects under it are then
+    # discovered automatically (any directory containing a .ai/).
     private def run_new_screen : Symbol
       path : String? = nil
       cancelled = false
@@ -183,9 +184,9 @@ module Aix
 
         # Header
         CRT::Label.new(screen, x: 0, y: 0, width: sw, height: 1,
-          text: " Add Project", style: CRT.theme.field)
+          text: " Add Root Path", style: CRT.theme.field)
 
-        CRT::Label.new(screen, x: 2, y: 3, text: "Directory:")
+        CRT::Label.new(screen, x: 2, y: 3, text: "Root path (scanned for .ai/ projects):")
 
         entry = CRT::Entry.new(screen, x: 2, y: 4, width: {sw - 4, 60}.min,
           border: CRT::Border::Single) do |value|
@@ -214,13 +215,7 @@ module Aix
       end
 
       if p = path
-        expanded = SessionManager.expand_directory(p)
-        name = File.basename(expanded)
-        begin
-          @manager.add(name, expanded)
-        rescue ex
-          File.write("/tmp/aix-debug.log", "ADD failed: #{ex.message}\npath=#{p}\nexpanded=#{expanded}\nname=#{name}\n")
-        end
+        @manager.add_root(p.strip)
       end
 
       run

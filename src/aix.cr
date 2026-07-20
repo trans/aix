@@ -1,4 +1,5 @@
 require "./aix/tmux"
+require "./aix/config"
 require "./aix/session"
 require "./aix/session_manager"
 require "./aix/meta_console"

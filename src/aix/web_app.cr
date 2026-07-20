@@ -51,21 +51,36 @@ module Aix
       end
     end
 
-    post "/api/sessions" do |env|
-      payload = request_payload(env)
-      directory = payload["directory"]?.try(&.as_s?) || ""
-      name = payload["name"]?.try(&.as_s?)
+    get "/api/roots" do |env|
+      roots, depth = with_lock { {manager.config.roots, manager.config.depth} }
+      json_response(env, {roots: roots, depth: depth})
+    end
 
-      if directory.blank?
-        next json_response(env, {error: "Directory is required"}, 422)
+    post "/api/roots" do |env|
+      payload = request_payload(env)
+      path = payload["path"]?.try(&.as_s?) || ""
+
+      if path.blank?
+        next json_response(env, {error: "Root path is required"}, 422)
       end
 
       begin
-        session = with_lock do
-          expanded = SessionManager.expand_directory(directory)
-          manager.add(name.presence || File.basename(expanded), expanded)
-        end
-        json_response(env, {session: session_payload(session, PREVIEW_LINES)}, 201)
+        added = with_lock { manager.add_root(path) }
+        next json_response(env, {error: "Root '#{path}' is already configured"}, 422) unless added
+        json_response(env, {ok: true, count: with_lock { manager.sessions.size }}, 201)
+      rescue ex
+        json_response(env, {error: ex.message}, 422)
+      end
+    end
+
+    delete "/api/roots" do |env|
+      payload = request_payload(env)
+      path = payload["path"]?.try(&.as_s?) || ""
+
+      begin
+        removed = with_lock { manager.remove_root(path) }
+        next json_response(env, {error: "No such root '#{path}'"}, 404) unless removed
+        json_response(env, {ok: true})
       rescue ex
         json_response(env, {error: ex.message}, 422)
       end
@@ -117,15 +132,12 @@ module Aix
       end
     end
 
-    delete "/api/sessions/:name" do |env|
-      name = env.params.url["name"]
-
-      begin
-        with_lock { manager.remove(name) }
-        json_response(env, {ok: true})
-      rescue ex
-        json_response(env, {error: ex.message}, 422)
+    post "/api/refresh" do |env|
+      count = with_lock do
+        manager.refresh
+        manager.sessions.size
       end
+      json_response(env, {ok: true, count: count})
     end
 
     ws "/ws/sessions/:name" do |socket, env|
@@ -349,7 +361,12 @@ module Aix
               color: var(--muted);
               font-size: 13px;
             }
-            form.add { display: grid; grid-template-columns: 2fr 1fr auto; gap: 12px; margin-bottom: 20px; }
+            form.add { display: grid; grid-template-columns: 1fr auto; gap: 12px; margin-bottom: 16px; }
+            .roots { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+            .roots .chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 999px; background: #172233; font-size: 13px; }
+            .roots .chip button { background: none; border: none; color: #8fa3bf; cursor: pointer; padding: 0; font-size: 15px; line-height: 1; }
+            .roots .chip button:hover { color: #ff6b6b; }
+            .roots .empty-roots { color: #8fa3bf; font-size: 13px; }
             input, button {
               border-radius: 12px;
               border: 1px solid var(--border);
@@ -421,7 +438,7 @@ module Aix
             <header>
               <div>
                 <h1>AIX Web</h1>
-                <p>Browser dashboard for the existing tmux-backed project sessions.</p>
+                <p>Projects are discovered under your root paths — any directory containing a <code>.ai/</code> folder.</p>
               </div>
               <div class="toolbar">
                 <div class="layout">
@@ -437,16 +454,17 @@ module Aix
             <section class="panel">
               <div id="message" class="message"></div>
               <form id="add-form" class="add">
-                <input id="directory" name="directory" placeholder="~/code/project" autocomplete="off">
-                <input id="name" name="name" placeholder="Optional custom name" autocomplete="off">
-                <button type="submit">Add Project</button>
+                <input id="root" name="root" placeholder="~/code  (root path scanned for .ai/ projects)" autocomplete="off">
+                <button type="submit">Add Root</button>
               </form>
+              <div id="roots" class="roots"></div>
               <div id="sessions" class="grid"></div>
             </section>
           </main>
 
           <script>
             const sessionsEl = document.getElementById("sessions");
+            const rootsEl = document.getElementById("roots");
             const messageEl = document.getElementById("message");
             const addForm = document.getElementById("add-form");
             const refreshButton = document.getElementById("refresh");
@@ -503,7 +521,6 @@ module Aix
                     <button type="button" data-action="start" data-name="${name}">Start</button>
                     <button type="button" data-action="resume" data-name="${name}">Resume</button>
                     <button type="button" data-action="stop" data-name="${name}">Stop</button>
-                    <button type="button" class="danger" data-action="remove" data-name="${name}">Remove</button>
                   </div>
                 </article>
               `;
@@ -512,10 +529,26 @@ module Aix
             async function loadSessions() {
               const data = await api("/api/sessions");
               if (!data.sessions.length) {
-                sessionsEl.innerHTML = '<div class="empty">No projects yet. Add one above.</div>';
+                sessionsEl.innerHTML = '<div class="empty">No projects found. Add a root path above, then create a <code>.ai/</code> directory in each project.</div>';
                 return;
               }
               sessionsEl.innerHTML = data.sessions.map(sessionCard).join("");
+            }
+
+            async function loadRoots() {
+              const data = await api("/api/roots");
+              if (!data.roots.length) {
+                rootsEl.innerHTML = '<span class="empty-roots">No roots configured yet.</span>';
+                return;
+              }
+              rootsEl.innerHTML = data.roots.map((root) => {
+                const safe = escapeHtml(root);
+                return `<span class="chip">${safe}<button type="button" data-root="${safe}" title="Remove root">×</button></span>`;
+              }).join("");
+            }
+
+            async function reload() {
+              await Promise.all([loadRoots(), loadSessions()]);
             }
 
             async function sessionAction(name, action, payload = {}) {
@@ -525,27 +558,41 @@ module Aix
                 return;
               }
 
-              if (action === "remove" && !window.confirm(`Remove ${name}?`)) return;
-
-              const method = action === "remove" ? "DELETE" : "POST";
-              const path = action === "remove" ? `/api/sessions/${encoded}` : `/api/sessions/${encoded}/${action}`;
-              await api(path, { method, body: JSON.stringify(payload) });
+              await api(`/api/sessions/${encoded}/${action}`, {
+                method: "POST",
+                body: JSON.stringify(payload),
+              });
               flash(`${name}: ${action} complete`);
               await loadSessions();
             }
 
             addForm.addEventListener("submit", async (event) => {
               event.preventDefault();
-              const directory = document.getElementById("directory").value.trim();
-              const name = document.getElementById("name").value.trim();
+              const rootInput = document.getElementById("root");
+              const path = rootInput.value.trim();
+              if (!path) return;
               try {
-                await api("/api/sessions", {
+                const data = await api("/api/roots", {
                   method: "POST",
-                  body: JSON.stringify({ directory, name }),
+                  body: JSON.stringify({ path }),
                 });
                 addForm.reset();
-                flash("Project added");
-                await loadSessions();
+                flash(`Root added — ${data.count} project(s) discovered`);
+                await reload();
+              } catch (error) {
+                flash(error.message, true);
+              }
+            });
+
+            rootsEl.addEventListener("click", async (event) => {
+              const button = event.target.closest("button[data-root]");
+              if (!button) return;
+              const path = button.dataset.root;
+              if (!window.confirm(`Remove root ${path}?`)) return;
+              try {
+                await api("/api/roots", { method: "DELETE", body: JSON.stringify({ path }) });
+                flash("Root removed");
+                await reload();
               } catch (error) {
                 flash(error.message, true);
               }
@@ -568,8 +615,14 @@ module Aix
               }
             });
 
-            refreshButton.addEventListener("click", () => {
-              loadSessions().catch((error) => flash(error.message, true));
+            refreshButton.addEventListener("click", async () => {
+              try {
+                const data = await api("/api/refresh", { method: "POST" });
+                flash(`Rescanned — ${data.count} project(s)`);
+                await reload();
+              } catch (error) {
+                flash(error.message, true);
+              }
             });
 
             layoutButtons.forEach((button) => {
@@ -577,7 +630,7 @@ module Aix
             });
 
             applyColumns(storedColumns);
-            loadSessions().catch((error) => flash(error.message, true));
+            reload().catch((error) => flash(error.message, true));
             setInterval(() => loadSessions().catch(() => {}), 3000);
           </script>
         </body>

@@ -12,7 +12,7 @@ module Aix
       # Tab-complete session names and commands
       @fancy.autocomplete.add do |ctx, range, word, yielder|
         completions = yielder.call(ctx, range, word)
-        commands = %w[add start list ls drop rename send peek help quit exit]
+        commands = %w[add roots refresh start stop list ls send peek help quit exit]
         names = @manager.sessions.map(&.name)
         (commands + names).each do |c|
           completions << Fancyline::Completion.new(range, c) if c.starts_with?(word)
@@ -59,13 +59,15 @@ module Aix
       when "list", "ls"
         cmd_list
       when "add"
-        cmd_add(args)
+        cmd_add_root(args)
+      when "roots"
+        cmd_roots
+      when "refresh"
+        cmd_refresh
       when "start"
         return cmd_start(args)
-      when "drop"
-        cmd_drop(args)
-      when "rename"
-        cmd_rename(args)
+      when "stop", "drop"
+        cmd_stop(args)
       when "send"
         cmd_send(args)
       when "peek"
@@ -95,21 +97,36 @@ module Aix
       end
     end
 
-    private def cmd_add(args : String?)
+    private def cmd_add_root(args : String?)
       unless args
-        puts "Usage: add <directory> [name]"
+        puts "Usage: add <root-path>"
         return
       end
-      parts = args.split(/\s+/, 2)
-      dir = parts[0]
-      expanded_dir = SessionManager.expand_directory(dir)
-      name = parts[1]? || File.basename(expanded_dir)
+      path = args.strip
       begin
-        @manager.add(name, dir)
-        puts "Added '#{name}' (#{expanded_dir})"
+        if @manager.add_root(path)
+          puts "Added root '#{path}'. #{@manager.sessions.size} project(s) discovered."
+        else
+          puts "Root '#{path}' is already configured."
+        end
       rescue ex
         puts "Error: #{ex.message}"
       end
+    end
+
+    private def cmd_roots
+      roots = @manager.config.roots
+      if roots.empty?
+        puts "No roots configured. Add one with: add <root-path>"
+        return
+      end
+      puts "Roots (scan depth #{@manager.config.depth}):"
+      roots.each { |r| puts "  #{r}" }
+    end
+
+    private def cmd_refresh
+      @manager.refresh
+      puts "Rescanned. #{@manager.sessions.size} project(s) available."
     end
 
     private def cmd_switch(name : String) : Symbol
@@ -139,33 +156,16 @@ module Aix
       end
     end
 
-    private def cmd_drop(args : String?)
-      unless args
-        puts "Usage: drop <name>"
-        return
-      end
-      name = args.strip
-      begin
-        @manager.remove(name)
-        puts "Dropped '#{name}'."
-      rescue ex
-        puts "Error: #{ex.message}"
-      end
-    end
-
-    private def cmd_rename(args : String?)
-      unless args
-        puts "Usage: rename <old> <new>"
-        return
-      end
-      parts = args.split(/\s+/, 2)
-      if parts.size < 2
-        puts "Usage: rename <old> <new>"
+    private def cmd_stop(args : String?)
+      name = args.try(&.strip)
+      name = @manager.active.try(&.name) if name.nil? || name.empty?
+      unless name
+        puts "Usage: stop <name>"
         return
       end
       begin
-        @manager.rename(parts[0], parts[1])
-        puts "Renamed '#{parts[0]}' to '#{parts[1]}'."
+        @manager.stop(name)
+        puts "Stopped '#{name}'."
       rescue ex
         puts "Error: #{ex.message}"
       end
@@ -210,17 +210,21 @@ module Aix
     private def cmd_help
       puts <<-HELP
       Commands:
-        add <dir> [name]       Add a session (name defaults to dir basename)
-        <name>                 Switch focus to a session
+        add <root-path>        Add a root path scanned for projects (dirs with .ai/)
+        roots                  List configured root paths
+        refresh                Rescan roots for projects
+        <name>                 Switch focus to a project
         start [args...]        Start Claude Code (passes args to claude)
-        list / ls              List sessions
-        drop <name>            Stop and remove a session
-        rename <old> <new>     Rename a session
+        list / ls              List projects
+        stop <name>            Stop a running session
         send <text>            Send keystrokes to active session
         peek [lines]           View active session output
         $ <command>            Run a shell command
         help / ?               Show this help
         quit / exit            Exit AIX
+
+      Projects are discovered automatically: any directory under a
+      configured root that contains a .ai/ directory becomes a project.
 
       In a session, press F12 to return here.
       HELP
