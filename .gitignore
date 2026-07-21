@@ -10,3 +10,4 @@
 /pkg/src/
 /pkg/*.pkg.tar.*
 /pkg/*.log
+/pkg/aix-*/
