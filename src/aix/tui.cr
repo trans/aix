@@ -222,6 +222,8 @@ module Aix
     end
 
     private def build_items : Array(String)
+      return ["(no projects — press 'a' to add a root)"] if @manager.sessions.empty?
+
       @manager.sessions.map do |s|
         status = case s.state
                  when SessionState::Running then "●"
