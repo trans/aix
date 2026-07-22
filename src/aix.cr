@@ -6,11 +6,19 @@ require "./aix/meta_console"
 require "./aix/tui"
 require "./aix/passthrough"
 require "./aix/web_app"
+require "./aix/control"
+require "./aix/mcp_server"
 
 module Aix
   VERSION = "0.2.0"
 
   def self.run
+    if ARGV.includes?("--mcp")
+      # MCP stdio server: stdout is reserved for protocol messages only.
+      MCPServer.new.run
+      return
+    end
+
     if ARGV.includes?("--web")
       run_web
       return
