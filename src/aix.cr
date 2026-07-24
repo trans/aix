@@ -8,6 +8,8 @@ require "./aix/passthrough"
 require "./aix/web_app"
 require "./aix/control"
 require "./aix/mcp_server"
+require "./aix/arcana"
+require "./aix/bus_bridge"
 
 module Aix
   VERSION = "0.2.0"
@@ -16,6 +18,13 @@ module Aix
     if ARGV.includes?("--mcp")
       # MCP stdio server: stdout is reserved for protocol messages only.
       MCPServer.new.run
+      return
+    end
+
+    if ARGV.includes?("--bridge")
+      # Bus bridge: watch Arcana, wake tmux sessions on incoming mail.
+      Tmux.ensure_session
+      BusBridge.new.run
       return
     end
 
