@@ -22,10 +22,11 @@ module Aix
     end
 
     def register(name : String? = nil, description : String? = nil,
-                 tags : Array(String)? = nil, kind : String = "agent") : JSON::Any
+                 tags : Array(String)? = nil, kind : String = "agent",
+                 listed : Bool? = nil) : JSON::Any
       post("/register", {
         address: @address, name: name, description: description,
-        kind: kind, tags: tags,
+        kind: kind, tags: tags, listed: listed,
       }.to_json)
     end
 

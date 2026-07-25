@@ -13,10 +13,14 @@ module Aix
   #   bus: message.sent, subject=@beta   ==>   tmux: send_keys(beta, "check mail")
   #   (on message.sent, `subject` is the recipient/`to`; `object` is the sender)
   #
-  # It also parks on its own @aix mailbox (server-side long-poll) as the channel
-  # sub-agents report back on.
+  # Addressing: the bridge is the SERVICE `aix` (bare token, listed:false) — a
+  # pure infra consumer, distinct from the `@aix` AGENT (the conversational /
+  # Leader identity). Separate mailboxes, so the bridge never drains the
+  # Leader's mail, and (once pub/sub lands) firehose events land in `aix`'s
+  # mailbox without mixing with `@aix`'s conversational mail. The Leader is just
+  # another agent the bridge wakes when a delivery's recipient is `@aix`.
   class BusBridge
-    ADDRESS       = "@aix"
+    ADDRESS       = "aix"
     WAKE_TEXT     = "New Arcana mail for you — run arcana_receive to read and handle it."
     COOLDOWN      = 3.seconds
     POLL_INTERVAL = 750.milliseconds
@@ -29,10 +33,10 @@ module Aix
     end
 
     def run
-      log "registering #{ADDRESS} on #{@arcana.base_uri}"
-      @arcana.register(name: "AIX", description: "AIX bus bridge", tags: ["orchestrator", "multiplexer"])
+      log "registering service '#{ADDRESS}' on #{@arcana.base_uri}"
+      @arcana.register(name: "AIX bridge", description: "AIX bus bridge — wakes tmux agents on incoming mail",
+        kind: "service", tags: ["orchestrator", "multiplexer"], listed: false)
       bootstrap_cursor
-      spawn inbox_listener
       poll_loop
     end
 
@@ -99,22 +103,12 @@ module Aix
       log "nudged '#{name}' (mail for #{address})"
     end
 
-    # Park on our own mailbox. Sub-agents report/ask here; the server-side
-    # long-poll gives push-quality latency with no polling.
-    private def inbox_listener
-      loop do
-        begin
-          @arcana.receive(timeout_ms: 25_000).each do |envelope|
-            # TODO(leader): surface/relay these to the Leader instead of just
-            # logging — this is the sub-agent -> Leader reporting channel.
-            log "inbox <= #{envelope.to_json}"
-          end
-        rescue ex
-          log "inbox error: #{ex.message}"
-          sleep 1.second
-        end
-      end
-    end
+    # TODO(pubsub): once Arcana ships the sys.message.sent firehose, replace
+    # poll_loop above with a listener that parks on THIS service's own mailbox
+    # (`aix`) via receive(timeout_ms: ...) — subscribed to the firehose topic,
+    # push-quality latency, poll-free. Each firehose envelope carries the
+    # recipient; feed it straight into maybe_nudge. The `@aix` conversational
+    # mailbox is owned by the Leader, NOT drained here (separate address).
 
     private def trim_seen
       @seen.clear if @seen.size > 5000
