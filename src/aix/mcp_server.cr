@@ -107,6 +107,12 @@ module Aix
         @control.send_text(arg_string(args, "name"), arg_string(args, "text")).to_json
       when "peek"
         @control.peek(arg_string(args, "name"), args["lines"]?.try(&.as_i?))
+      when "focus"
+        @control.focus(arg_string(args, "name")).to_json
+      when "set_leader"
+        @control.set_leader(arg_string(args, "name")).to_json
+      when "get_leader"
+        @control.leader.to_json
       else
         raise "Unknown tool: #{name}"
       end
@@ -206,6 +212,29 @@ module Aix
           },
           "required": ["name"]
         }
+      },
+      {
+        "name": "focus",
+        "description": "Switch the attached human's tmux view to a project's pane — i.e. 'patch me over to @memo'. The project must be running.",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "name": { "type": "string", "description": "Project name (bare or @-prefixed)" } },
+          "required": ["name"]
+        }
+      },
+      {
+        "name": "set_leader",
+        "description": "Designate a project as the Leader and bind the return-to-Leader key (F9) so the human can jump back to it from any pane. A Leader agent typically calls this on itself at startup.",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "name": { "type": "string", "description": "Project name (bare or @-prefixed)" } },
+          "required": ["name"]
+        }
+      },
+      {
+        "name": "get_leader",
+        "description": "Report the current Leader designation and the return-to-Leader key.",
+        "inputSchema": { "type": "object", "properties": {} }
       },
       {
         "name": "list_roots",

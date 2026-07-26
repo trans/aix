@@ -62,9 +62,22 @@ module Aix
       run("kill-window", "-t", "#{SESSION}:#{name}")
     end
 
-    # Select a window (make it active).
+    # Prefix-free key that jumps the attached client back to the Leader window.
+    RETURN_TO_LEADER_KEY = "F9"
+
+    # Select a window (make it active). Moves the view of any attached client.
     def self.select_window(name : String)
       run("select-window", "-t", "#{SESSION}:#{name}")
+    end
+
+    # Bind a prefix-free key (root table) to a tmux command.
+    def self.bind_key(key : String, *command : String)
+      run("bind-key", "-n", key, *command)
+    end
+
+    # (Re)bind RETURN_TO_LEADER_KEY to jump straight to the Leader's window.
+    def self.bind_return_to_leader(leader_window : String)
+      bind_key(RETURN_TO_LEADER_KEY, "select-window", "-t", "#{SESSION}:#{leader_window}")
     end
 
     # Attach to the aix session. Blocks until the user detaches.

@@ -78,6 +78,30 @@ module Aix
       Tmux.capture_pane(session.name, lines)
     end
 
+    # Switch the attached client's view to a project's pane ("patch me over
+    # to @memo"). Accepts a bare or @-prefixed name.
+    def focus(name : String)
+      session = require_session(name.lstrip('@'))
+      raise "'#{name}' is not running" unless session.running?
+      Tmux.select_window(session.name)
+      info(session)
+    end
+
+    # Designate a project as the Leader and (re)bind the return-to-Leader key
+    # so the attached human can jump home from any pane.
+    def set_leader(name : String)
+      session = require_session(name.lstrip('@'))
+      @manager.config.leader = session.name
+      @manager.config.save
+      Tmux.bind_return_to_leader(session.name)
+      {leader: session.name, return_key: Tmux::RETURN_TO_LEADER_KEY}
+    end
+
+    # The current Leader designation and the key that jumps to it.
+    def leader
+      {leader: @manager.config.leader, return_key: Tmux::RETURN_TO_LEADER_KEY}
+    end
+
     private def require_session(name : String) : Session
       @manager.refresh
       session = @manager.find(name)

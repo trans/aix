@@ -17,8 +17,11 @@ module Aix
 
     property roots : Array(String)
     property depth : Int32
+    # The project designated as Leader (return-to-Leader keybind target).
+    property leader : String?
 
-    def initialize(@roots : Array(String) = [] of String, @depth : Int32 = DEFAULT_DEPTH)
+    def initialize(@roots : Array(String) = [] of String, @depth : Int32 = DEFAULT_DEPTH,
+                   @leader : String? = nil)
     end
 
     def self.config_dir : String
@@ -35,14 +38,15 @@ module Aix
       raw = JSON.parse(File.read(path))
       roots = raw["roots"]?.try(&.as_a?).try(&.compact_map(&.as_s?)) || [] of String
       depth = raw["depth"]?.try(&.as_i?) || DEFAULT_DEPTH
-      new(roots, depth)
+      leader = raw["leader"]?.try(&.as_s?)
+      new(roots, depth, leader)
     rescue
       new
     end
 
     def save
       Dir.mkdir_p(self.class.config_dir)
-      File.write(self.class.path, {roots: @roots, depth: @depth}.to_json)
+      File.write(self.class.path, {roots: @roots, depth: @depth, leader: @leader}.to_json)
     end
 
     # Add a root path (kept verbatim so `~` stays portable). Returns false
