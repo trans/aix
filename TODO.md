@@ -31,12 +31,28 @@
 - [ ] Surface/relay inbox messages to the Leader instead of just logging
       (`TODO(leader)` in `bus_bridge.cr`).
 
-## Leader / orchestration (step 3)
+## Leader-as-UI (the primary interface)
 
-- [ ] Decide Leader host (harness-as-Leader now vs Copious later) — see memory
-      `project_orchestrator`. Bridge is a prerequisite either way.
-- [ ] MetaConsole routing: bare text -> Leader, `name:` -> route to sub-agent,
-      `\name` -> private passthrough channel.
+Decided: the human tmux-attaches to the Leader harness (Claude Code) and
+drives everything via its aix-control MCP tools + natural language. No custom
+console. See memory `project_orchestrator`.
+
+- [x] Leader host = harness-as-Leader (Copious deferred).
+- [x] MetaConsole routing (step 3) — built, but SUPERSEDED as primary; kept
+      as a no-Leader/headless fallback.
+- [x] `focus(name)` MCP tool — "patch me over to @memo" (select-window).
+- [x] `set_leader(name)` MCP tool + return-to-Leader keybind (F9); persists
+      config.leader. `get_leader` reports it.
+- [ ] Leader role/system prompt: instruct the Leader to call `set_leader` on
+      itself at startup (so F9 is always bound) and to report/route via its
+      tools. (Part of `aix setup`? or the launch config.)
+- [ ] Rebind F9 from config.leader on session (re)creation, so it survives a
+      tmux server restart even before the Leader self-designates.
+- [ ] Keybinds: return-to-Leader (F9, done), detach, quit. Tentative rule:
+      exit-to-shell only from the console/top-level, not from inside an agent
+      pane.
+- [ ] TUI stays as a read-only dashboard (glance-able all-agents view); web UI
+      as read-only monitor later.
 
 ## Housekeeping
 
