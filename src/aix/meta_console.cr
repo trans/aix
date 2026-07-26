@@ -6,13 +6,16 @@ module Aix
     getter manager : SessionManager
     getter fancy : Fancyline
 
+    # The session bare (non-command) text is routed to, as the Leader.
+    @leader : String? = nil
+
     def initialize(@manager : SessionManager)
       @fancy = Fancyline.new
 
       # Tab-complete session names and commands
       @fancy.autocomplete.add do |ctx, range, word, yielder|
         completions = yielder.call(ctx, range, word)
-        commands = %w[add roots refresh start stop list ls send peek help quit exit]
+        commands = %w[leader add roots refresh start stop list ls send peek help quit exit]
         names = @manager.sessions.map(&.name)
         (commands + names).each do |c|
           completions << Fancyline::Completion.new(range, c) if c.starts_with?(word)
@@ -51,6 +54,24 @@ module Aix
         return :continue
       end
 
+      # Private channel: \@name (or \name) -> drop into that agent's pane.
+      if line.starts_with?("\\")
+        return cmd_switch(line[1..].strip.lstrip('@'))
+      end
+
+      # Routed message: [@]name: text -> send straight to that agent's pane.
+      if m = line.match(/\A(@?)([^\s:]+):[ \t]?(.*)\z/m)
+        sigil, name, text = m[1], m[2], m[3]
+        if @manager.find(name)
+          cmd_route(name, text)
+          return :continue
+        elsif sigil == "@"
+          puts "No project named '#{name}'."
+          return :continue
+        end
+        # No sigil + unknown name (e.g. "TODO: ...") — fall through to Leader.
+      end
+
       parts = line.split(/\s+/, 2)
       cmd = parts[0].downcase
       args = parts[1]?
@@ -58,6 +79,8 @@ module Aix
       case cmd
       when "list", "ls"
         cmd_list
+      when "leader"
+        cmd_leader(args)
       when "add"
         cmd_add_root(args)
       when "roots"
@@ -77,11 +100,15 @@ module Aix
       when "quit", "exit"
         return :quit
       else
-        # Try as a session name — switch focus to it
-        if @manager.sessions.any? { |s| s.name == cmd }
+        # Bare text is a message to the Leader, if one is set.
+        if leader = @leader
+          cmd_route(leader, line)
+        elsif @manager.find(cmd)
+          # Back-compat (no Leader set): a bare project name switches focus.
           return cmd_switch(cmd)
+        else
+          puts "Unknown command: #{cmd}. Set a Leader with 'leader @name', or type 'help'."
         end
-        puts "Unknown command: #{cmd}. Type 'help' for commands."
       end
       :continue
     end
@@ -127,6 +154,33 @@ module Aix
     private def cmd_refresh
       @manager.refresh
       puts "Rescanned. #{@manager.sessions.size} project(s) available."
+    end
+
+    # Designate (or show) the Leader — the agent bare text is routed to.
+    private def cmd_leader(args : String?)
+      name = args.try(&.strip.lstrip('@'))
+      if name.nil? || name.empty?
+        puts @leader ? "Leader: @#{@leader}" : "No Leader set. Usage: leader @name"
+        return
+      end
+      unless @manager.find(name)
+        puts "No project named '#{name}'."
+        return
+      end
+      @leader = name
+      puts "Leader set to @#{name}. Bare text now goes to it; use \\@#{name} to open its pane."
+    end
+
+    # Route a line of text to a named agent's running pane.
+    private def cmd_route(name : String, text : String)
+      session = @manager.find(name)
+      unless session && session.running?
+        puts "'@#{name}' is not running — start it first."
+        return
+      end
+      return if text.empty?
+      Tmux.send_keys(session.name, text)
+      puts "→ @#{name}"
     end
 
     private def cmd_switch(name : String) : Symbol
@@ -209,11 +263,16 @@ module Aix
 
     private def cmd_help
       puts <<-HELP
+      Chat / routing:
+        <text>                 Send to the Leader (set one with 'leader')
+        @name: <text>          Route a message to that agent's pane
+        \\@name                 Open that agent's pane (F12 returns here)
+        leader [@name]         Set/show the Leader (bare text goes to it)
+
       Commands:
         add <root-path>        Add a root path scanned for projects (dirs with .ai/)
         roots                  List configured root paths
         refresh                Rescan roots for projects
-        <name>                 Switch focus to a project
         start [args...]        Start Claude Code (passes args to claude)
         list / ls              List projects
         stop <name>            Stop a running session
