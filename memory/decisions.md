@@ -123,8 +123,18 @@ terminal widget).
   from `tmux capture-pane -e`.
 - **A file browser in the sidebar** (user, 2026-11-11). Jumping to open a
   file an agent mentions is tiresome, because CLI links often don't work.
-  Design **open**: what "open" does, and how to list the files an agent
-  mentions or changes.
+  - **The point is saving the time spent navigating to a file**, not
+    editing it (user, 2026-11-11).
+  - **Opening is `xdg-open`** (user, 2026-11-11): the desktop's default
+    app for the file. It can't jump to a line, and it doesn't need to.
+  - **Which files to list** (aix's agent's suggestion; **not decided**):
+    1. files the agent touched, from the harness's own log (Claude Code's
+       `~/.claude/projects/<dir>/<session>.jsonl` records each Read, Edit
+       and Write with its path; Codex keeps similar logs);
+    2. files changed (`git status`);
+    3. the project tree.
+
+    Picking up `path:line` text from the pane could come later.
 
 ## Crystal and crt, not Rust (user, 2026-11-11)
 
