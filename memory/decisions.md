@@ -107,6 +107,25 @@ about their mail and pushes only to idle ones; the hooks inside each
 session keep the start/Stop notices. This replaces the same day's choice
 of `ai.carrier aix`. See `runner.md`.
 
+## The aix sidebar: a tmux split pane (user, 2026-11-11)
+
+Aix's UI is a narrow tmux pane beside the agent's pane, so the agent no
+longer takes the whole screen. crt doesn't emulate a terminal (it has no
+terminal widget).
+
+- **Moving the sidebar:** on a switch, the sidebar pane moves into the
+  agent's window (`join-pane`), not the agent into aix's. Each agent keeps
+  its own window and name, which mail to `@name` relies on.
+- **Commands must target panes by id:** with two panes in a window,
+  `send-keys` or `capture-pane` aimed at `aix:name` hits whichever pane is
+  active. They have to target the agent's pane by its id (`%12`).
+- **Later, maybe:** read-only live previews of other agents, drawn by crt
+  from `tmux capture-pane -e`.
+- **A file browser in the sidebar** (user, 2026-11-11). Jumping to open a
+  file an agent mentions is tiresome, because CLI links often don't work.
+  Design **open**: what "open" does, and how to list the files an agent
+  mentions or changes.
+
 ## Crystal and crt, not Rust (user, 2026-11-11)
 
 **Decided: stay with Crystal and crt.** The user had asked whether to stay with Crystal and their own
