@@ -62,10 +62,22 @@ return-to-lead keybind (`7b41a71`), and meta-console routing in the REPL
 - **Wrong, corrected 2026-11-11:** the 2026-07 notes (and `TODO.md`,
   `d457742`) said "the TUI stays a read-only dashboard". The user never
   said so. What part the TUI plays is **open**.
-- **Open:** when the lead passes something on ("tell @yaml2 to ..."),
-  should it go as mail, or through `send`, which types into the agent's
-  pane? Aix's point is mail rather than keystrokes. Asked the user on
-  2026-11-11.
+- **Decided (user, 2026-11-11): the lead passes things on by mail.**
+  "tell @yaml2 to ..." means the lead sends @yaml2 mail, and then @yaml2
+  is told "you have mail". Typing straight into an agent's pane (`send`)
+  is only for emergencies, such as "OOM is imminent, stop what you are
+  doing now!".
+  - **Found 2026-11-11, needs fixing:** `send` types the text and presses
+    Enter (`Tmux.send_keys`). A Claude Code session in mid-turn queues
+    typed input, and may not see it until the running tool returns. An
+    emergency send has to interrupt first (Escape), then type. Verify
+    that for Claude Code and Codex.
+  - **Found 2026-11-11:** aix starts plain `claude`
+    (`tmux new-window -- claude`, `src/aix/tmux.cr`), without dot-ai's
+    channel option. The user's shell alias doesn't apply there, so
+    sessions aix starts get no mail push. They hear of mail only at
+    session start, at Stop or at a prompt. Until `aix tell` exists, aix
+    could launch with the channel option.
 
 ## Addressing: `@` for agents, bare names for services (user, 2026-07-25)
 
