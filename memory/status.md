@@ -14,25 +14,14 @@ the bus bridge (`c727357`, registered as the `aix` service in `bab1d04`),
 the meta console's Leader routing (`d596a95`), and the `focus` /
 `set_leader` tools with the F9 return-to-Leader keybind (`7b41a71`).
 
-## Not yet committed (in the working tree as of 2026-11-11)
+## Committed 2026-11-11
 
-**Done, not yet committed:** discovery as a tree of responsibility, and
-projects named by their agent's handle. `TODO.md` dates both 2026-10-10.
-
-- `src/aix/config.cr`: the scan goes on inside projects; `discover`
-  returns `Config::Project` records with `parent` and `level`, in tree
-  order. A project's name is `handle` from its `.ai/config.yml` (or the
-  older `arcana.handle`), otherwise Arcana's fallback (the directory name,
-  folded). This keeps the bridge's `@name` → window `name` mapping working.
-- `control.cr`, `mcp_server.cr`, `session.cr`, `session_manager.cr`,
-  `tui.cr`, `meta_console.cr`: these carry `parent` through, so
-  `list_projects` reports it and the TUI and console indent.
-- `TODO.md`: these items are marked done, and so is the Leader's
-  self-designation (the `lead` project's SessionStart hook calls
-  `set_leader`).
-
-Before committing, check that it builds (`crystal build src/aix.cr`).
-`crystal spec` doesn't work yet (see Next).
+- `e21b623`: discovery as a tree of responsibility, with projects named
+  by their agent's handle (the work `TODO.md` dates 2026-10-10). It
+  type-checks (`crystal build --no-codegen src/aix.cr`), but hasn't been
+  run against a live tmux session since.
+- `7ab2062`: a real README, and `TODO.md` updated with the 2026-11-11
+  decisions (`decisions.md`, `runner.md`).
 
 ## Next
 
