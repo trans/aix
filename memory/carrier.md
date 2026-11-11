@@ -23,6 +23,28 @@ We considered moving the carrier into Aix and leaving dot-ai as a spec
 with no code, and rejected it. Mail would then need Aix (a Crystal binary
 plus tmux) on every machine, so it would no longer be optional.
 
+## Conferring with @arcana (2026-11-11, waiting for its answer)
+
+The user asked for this before deciding: Arcana's ideas differ a little
+from these. Arcana's side is in its `.ai/memory/mail-push.md` and its mail
+to @tom (`aca49f26`, `7e24f6b1`). Our message is
+`mail/sent/20261111-204132Z-@arcana--aix-as-a-carrier-where-we-differ.md`.
+In short:
+
+- **Arcana's conditions:** aix runs the reference's delivery
+  (`dot-ai mail deliver --self`) and adds only the telling; and aix must
+  push before the reference stops pushing. Aix's agent agrees with both.
+  The user hasn't ruled.
+- **Who tells:** Arcana agrees with @tom that telling belongs to whoever
+  runs the session. We asked whether that covers the start/Stop notices
+  too, or only the push to an idle session.
+- **Raised by aix, for the user:** since the reference delivers and the
+  runner tells, aix might not need to be a carrier at all. The carrier
+  would stay `local`, aix and T.O.M. would be runners, and the shared
+  session records would say how to tell each session.
+- **@tom leads the standard.** Spec changes (the carrier list, what every
+  carrier must do, the session records) are drafted by @tom.
+
 ## How carriers already stay out of each other's way
 
 From the spec's "The carrier" section (`spec/mail.md` in the dot.ai repo):
