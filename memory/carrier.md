@@ -23,7 +23,37 @@ We considered moving the carrier into Aix and leaving dot-ai as a spec
 with no code, and rejected it. Mail would then need Aix (a Crystal binary
 plus tmux) on every machine, so it would no longer be optional.
 
-## Conferring with @arcana (2026-11-11, waiting for its answer)
+## @arcana's answer (2026-11-11): runners, not `ai.carrier aix`
+
+**Waiting for the user to choose.** @arcana now thinks the runner model is
+better than `ai.carrier aix`, which it had backed earlier
+(`mail/received/20261111-204242Z-@arcana--re-aix-as-a-carrier-my-view-on-2-and-4-0d4ca962.md`):
+
+- **Carrier vs runners:** the carrier moves files, one per user. Runners
+  tell sessions, and several can run side by side (aix and T.O.M.). The
+  general hand-off and the `--self` flag are no longer needed.
+- **Who tells, settled between us:** the harness's hooks keep the
+  start/Stop notices in every session. The session's manager (aix,
+  T.O.M.'s fleet) only pushes while the session is idle.
+- **Arcana's three conditions for the runner model:**
+  1. A record names its runner by a plain name and an id. The reference
+     tells a session by running `<runner> tell <id>`, never a command
+     line read from a file.
+  2. Checking that a session is still open is the runner's job. If
+     `tell` says the session isn't open, the reference tries the next
+     newest record and the runner marks that one `ended`. For its own
+     panes, aix answers this.
+  3. Records become required, so their format goes into the spec as part
+     of mail. T.O.M. writes records as runner `tom`. A session no runner
+     can push to (Claude Code without a channel) gets a record saying so,
+     and is told at its next start or Stop.
+- **What then moves to aix:** the channel server, `codex queue` and
+  `wake`. The reference's own telling shrinks to the one `tell` call.
+- **Timing:** @tom is drafting the spec round with `ai.carrier aix` in
+  it. Arcana will tell the user that the hand-off and `--self` drop out
+  if the user picks the runner model.
+
+## Conferring with @arcana (2026-11-11)
 
 The user asked for this before deciding: Arcana's ideas differ a little
 from these. Arcana's side is in its `.ai/memory/mail-push.md` and its mail
