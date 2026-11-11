@@ -3,8 +3,8 @@
 handle: aix       # this project's handle: other agents write to @aix
 description: >    # what this project's agent does, shown to other agents
   The agent for Aix, a tmux-based manager for AI harnesses (Claude Code,
-  Codex, ...). The user jumps between agents' panes and talks to each
-  directly; the agents talk to each other by dot-ai mail, not keystrokes,
-  and Aix rings the mail bell as their runner (`aix tell`). Ask it about
-  running harnesses in Aix, waking sessions, or how projects are found and
-  named.
+  Codex, ...). The user works through Aix's lead session, which
+  coordinates the others, or jumps into any agent's pane and talks to it
+  directly. Agents talk to each other by dot-ai mail, not keystrokes, and
+  Aix rings the mail bell as their runner. Ask it about running harnesses
+  in Aix, waking sessions, or how projects are found and named.
