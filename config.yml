@@ -1,5 +1,9 @@
 # Settings for AI agents, and tools, working in this project.
 # See the dot-ai skill's references/config.md.
 handle: aix       # this project's handle: other agents write to @aix
-description: >        # what this project's agent does, shown to other agents
-  The agent for aix.
+description: >    # what this project's agent does, shown to other agents
+  The agent for Aix, the tmux multiplexer that runs each project's AI
+  harness (Claude Code) in its own window: project discovery by .ai/, the
+  bus bridge that wakes agents when Arcana mail arrives, and the MCP
+  control plane (aix --mcp) the Leader drives it through. Ask it about
+  Aix's control tools, the bridge, or how projects are found and named.
