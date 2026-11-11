@@ -59,7 +59,14 @@ reference script, the tests and Arcana to match.
    queue` (Codex) and `wake`. Nothing leaves the reference until aix
    pushes.
 5. **Keystrokes only as a fallback,** for a harness with no push path.
-   Never into a pane waiting on a prompt, where keys could answer it.
+   Never type into a pane waiting on a prompt, where keys could answer
+   it. Typed text also reads as the user's own words, and can mix with
+   what the user is typing.
+6. **A wake-up never carries the message** (the user, 2026-11-10, per
+   @tom). A push, a keystroke doorbell or a `wake` prompt says only that
+   mail is waiting ("You have mail in .ai/mail/inbox/."). Another agent's
+   words placed there would borrow the authority of what an agent is
+   told directly.
 
 ## T.O.M.'s sessions are T.O.M.'s (user, 2026-11-11)
 
@@ -76,7 +83,14 @@ in an aix pane: it forks it or skips it.
 
 T.O.M.'s notes leave one question for aix: whether `wake` covers Copious.
 From the user's point above, the answer is no: T.O.M. wakes its own
-sessions. **Told @tom** (`mail/sent/20261111-212257Z-@tom--does-aix-s-wake-cover-copious-no.md`): aix never tells, wakes or resumes a `by=tom` session, and sets no `DOT_AI_BY` when it runs T.O.M. in a pane.
+sessions. **Told @tom**
+(`mail/sent/20261111-212257Z-@tom--does-aix-s-wake-cover-copious-no.md`):
+aix never tells, wakes or resumes a `by=tom` session, and sets no
+`DOT_AI_BY` when it runs T.O.M. in a pane. **@tom agreed and gave the same
+rule from its side**
+(`mail/received/20261111-212339Z-@tom--wake-and-copious-and-arcana-s-advice-for-aix-73619b91.md`):
+T.O.M. never tells, wakes or resumes a `by=aix` session. It builds its
+side once @arcana's script and tests land, and will write when it has.
 
 ## Open
 
@@ -84,4 +98,16 @@ sessions. **Told @tom** (`mail/sent/20261111-212257Z-@tom--does-aix-s-wake-cover
   Arcana's `message.sent`. What's left for the bridge is bus traffic
   that isn't mail. Whether that still needs the `sys.message.sent` push
   (`TODO.md`, `coordination.md`) is undecided.
+- **What `wake` looks like.** One input is "turns on demand", an idea of
+  the user's that's **being weighed, not decided** (via @arcana and @tom,
+  2026-11-11). When there's work for a project, resume its saved session
+  headless, or fork it:
+  - fork or skip a session that's open or busy;
+  - allow a headless turn's tools up front, and send what needs the user
+    back as a held draft;
+  - make the prompt only "process your inbox", and send the request
+    itself as mail;
+  - a resumed turn sends the whole session again, so long sessions cost
+    more;
+  - give parallel turns that change code a git worktree each.
 - `TODO.md` in the code repo doesn't list this work yet.
