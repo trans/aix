@@ -2,47 +2,64 @@
 
 *Updated 2026-11-11*
 
-The design decisions behind Aix: who made each one, when, and why. All of
-them are **settled**, so don't reopen them. They belong in the project's own
-docs, but the README is still boilerplate, so they stay here until it's
-written. Move them there then, and leave a pointer.
+The design decisions behind Aix: who made each one, when, and why. They
+belong in the project's own docs, but the README is still boilerplate, so
+they stay here until it's written. Move them there then, and leave a
+pointer.
 
-## Layering (user, 2026-03)
+**Things have changed since 2026-07** (the user, 2026-11-11). Some of the
+sections below came from an earlier agent's notes from 2026-07, not
+straight from the user. Where they disagree with "What Aix is", that
+section wins. Check with the user before relying on them.
+
+## What Aix is (user, 2026-11-11)
+
+Aix is a tmux-based manager for AI harnesses, like `amux` and others.
+What sets it apart: as far as the user knows, the others pass messages
+between agents by typing into their panes, while Aix uses mail (dot-ai).
+The agents are full harnesses (Claude Code, Codex, ...), and with Aix the
+user jumps between them and talks to each one directly. Aix manages them
+and helps them communicate: it rings the mail bell (see `runner.md`).
+
+Earlier, on 2026-11-10, the user said they didn't really need aix, and
+then brought it back as its own project. Fleet management (running other
+projects' agents headless, on demand) is T.O.M.'s (user, 2026-11-11, per
+@tom's notes). So Aix isn't the multi-agent leader that the 2026-03
+layering below describes.
+
+## Layering (2026-03; partly outdated)
 
 - **Arcana**: messaging, discovery and routing (the bus).
 - **Copious**: orchestration, context windowing and event sourcing. A
-  separate shard.
-- **Aix**: the multi-agent leader's machinery. It runs harnesses in tmux,
-  bridges the bus to them, and exposes a control plane.
+  separate shard, now inside T.O.M.
+- **Aix**: the multi-agent leader's machinery, as first conceived. See
+  "What Aix is" above for what it is now.
 
 Aix doesn't duplicate what Arcana provides.
 
-## The Leader is a harness, not Copious (user, 2026-07)
+## The Leader is a harness (2026-07, from an earlier agent's notes)
 
 There are two roles. The managed agents are tmux harnesses, which is Aix's
 core. The Leader is just another harness (Claude Code) that drives Aix
-through tools. This gives the Leader a full agentic loop for free. Move to
-Copious only when something like durable, event-sourced context can't be
-built as tools the harness Leader calls. The Leader can be swapped out
-behind `Aix::Control` + `Aix::MCPServer` (`aix --mcp`, `f091df0`). Any
-Leader can drive Aix through it: a harness, Copious, or a remote agent.
+through tools. Aix exposes those tools through `Aix::Control` +
+`Aix::MCPServer` (`aix --mcp`, `f091df0`), so any Leader can drive it.
 State lives in tmux and the filesystem, so the MCP server and the TUI share
-one `aix` tmux session.
+one `aix` tmux session. T.O.M.'s notes suggest T.O.M. as aix's Leader
+later. **Not decided.**
 
-## The Leader is the UI (user, 2026-07-25)
+## Leader-as-UI (2026-07-25, from an earlier agent's notes; unconfirmed)
 
-The person tmux-attaches to the Leader and works in natural language. The
-Leader uses the aix-control MCP tools (`focus` switches the person's view
-with `select-window`). Aix doesn't build a custom console.
+The 2026-07 notes had the person tmux-attach to the Leader and work in
+natural language, with the Leader's `focus` tool switching the view, and
+no custom console. Built: `focus`, `set_leader`, F9 return-to-Leader
+(`7b41a71`), and meta-console routing in the REPL (`d596a95`). `@lead` was
+the only Leader as of 2026-10-10.
 
-- The REPL's meta-console routing (`d596a95`) is a fallback when there's
-  no Leader, not the main interface.
-- The TUI stays as a read-only dashboard. The web UI becomes a read-only
-  monitor later.
-- Aix needs only a few keybinds: return-to-Leader (F9, done), detach, quit.
-  Tentatively, exiting to the shell is allowed only from the top level,
-  never from inside an agent's pane.
-- `@lead` is the only Leader for now (user, 2026-10-10).
+- **Wrong, corrected 2026-11-11:** those notes (and `TODO.md`, `d457742`)
+  said "the TUI stays a read-only dashboard". The user never said so. It
+  conflicts with "What Aix is": the user jumps between agents and talks
+  to them directly. What the TUI's part in that is remains **open**.
+- How much of Leader-as-UI still holds is for the user to say.
 
 ## Addressing: `@` for agents, bare names for services (user, 2026-07-25)
 
