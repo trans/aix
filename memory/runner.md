@@ -25,11 +25,19 @@ picked it. The record:
 
 ## What aix has to build
 
-**Open, nothing built yet.** The sources are @arcana's message `fa4aa072`
-and @tom's spec draft 0.4 (dot.ai branch `spec-carriers`, `641fa32`:
-`spec/mail.md`, "One runner per session" and "Session records"). @tom is
-revising the draft: records become required, and the reference tells a
-session by running `<by> tell <id>`. Check the final text before building.
+**Open, nothing built yet.** The contract is spec draft 0.4, merged into
+dot.ai's `main` as `5750a1a` (not pushed as of 2026-11-11), in
+`spec/mail.md`, "Runners" and "Session records". @arcana is changing the
+reference script, the tests and Arcana to match.
+
+- **The reference doesn't push.** `dot-ai tell` always exits 4 (or 3). The
+  user moved the push to aix ("we can move the push stuff to aix"). It
+  keeps pushing today, and nothing leaves it until aix pushes (@arcana's
+  condition), so aix's push is on the critical path.
+- **`ai.runner`** (the person's git config, one value per runner) lists
+  the runners the carrier is allowed to call. The first one is the default
+  for sessions started without `DOT_AI_BY`, such as Codex's, whose hooks
+  no launcher reaches. Aix has to be in that list.
 
 1. **Session records** for every session aix runs, with `by=aix`. They live
    in `$XDG_STATE_HOME/dot-ai/sessions/<key>.session`, one `field=value`
@@ -39,20 +47,39 @@ session by running `<by> tell <id>`. Check the final text before building.
 2. **`DOT_AI_BY=aix`** in the environment of every session aix starts.
    The session's hooks then write `by=aix` and leave pushing, waking and
    resuming to aix.
-3. **`aix tell <id>`:** push the notice into the session while it's idle.
-   If the session isn't open, say so and mark its record `ended`. The
-   reference then tries the project's next-newest record. Checking that a
-   session is open is the runner's job; for its own panes, aix knows.
+3. **`aix tell <id>`**, which exits with one of these:
+   - 0: the session was told, or will be at the end of its turn.
+   - 3: the session isn't open, and aix has marked its record `ended`.
+     The carrier then tries the project's next-newest session.
+   - 4: aix can't push to the session. It hears at its next start or
+     Stop.
+   Checking that a session is still open is the runner's job; for its
+   own panes, aix knows.
 4. **The glue moves to aix:** the channel server (Claude Code), `codex
    queue` (Codex) and `wake`. Nothing leaves the reference until aix
    pushes.
 5. **Keystrokes only as a fallback,** for a harness with no push path.
    Never into a pane waiting on a prompt, where keys could answer it.
 
+## T.O.M.'s sessions are T.O.M.'s (user, 2026-11-11)
+
+T.O.M. starts its sessions and controls them completely. They're Copious
+sessions; it allows Claude Code sessions too, but only for now, while
+Copious is unfinished. Copious reads its own project's `.ai/`, so its
+sessions need neither hooks nor aix. T.O.M. starts the Claude Code
+sessions it runs with `DOT_AI_BY=tom`.
+
+Aix and T.O.M. touch in only two places, and the session records cover
+both. A project with a session open in each world is told once, through
+its newest session. T.O.M.'s fleet doesn't resume a session that's open
+in an aix pane: it forks it or skips it.
+
+T.O.M.'s notes leave one question for aix: whether `wake` covers Copious.
+From the user's point above, the answer is no: T.O.M. wakes its own
+sessions. **Not yet told to @tom.**
+
 ## Open
 
-- The exact `tell` contract (its output and exit status for "not open"),
-  once @tom's revision lands.
 - The bus bridge: for mail, `aix tell` replaces its keystroke nudge on
   Arcana's `message.sent`. What's left for the bridge is bus traffic
   that isn't mail. Whether that still needs the `sys.message.sent` push
