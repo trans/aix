@@ -113,6 +113,7 @@ module Aix
       {
         name:      session.name,
         directory: session.directory,
+        parent:    session.parent,
         state:     state_label(session),
         running:   session.running?,
       }

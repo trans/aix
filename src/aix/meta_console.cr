@@ -120,7 +120,7 @@ module Aix
       end
       @manager.sessions.each_with_index do |s, i|
         marker = (i == @manager.active_index) ? "*" : " "
-        puts " #{marker} #{s.name}\t#{s.state}\t#{s.directory}"
+        puts " #{marker} #{"  " * s.level}#{s.name}\t#{s.state}\t#{s.directory}"
       end
     end
 
@@ -284,6 +284,7 @@ module Aix
 
       Projects are discovered automatically: any directory under a
       configured root that contains a .ai/ directory becomes a project.
+      A project inside another project's directory is listed below it.
 
       In a session, press F12 to return here.
       HELP

@@ -12,6 +12,10 @@ module Aix
     property name : String
     getter directory : String
     property claude_session_id : String?
+    # The project above this one in the tree of responsibility, if any, and
+    # how many projects are above it.
+    property parent : String?
+    property level : Int32 = 0
 
     def initialize(@name : String, @directory : String, @claude_session_id : String? = nil)
     end

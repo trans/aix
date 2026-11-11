@@ -34,16 +34,16 @@ module Aix
       by_dir = @sessions.index_by(&.directory)
       resume = resume_ids
 
-      @sessions = discovered.map do |name, dir|
-        if existing = by_dir[dir]?
-          existing.name = name
-          existing
-        else
-          Session.new(name, dir, resume[dir]?)
-        end
+      @sessions = discovered.map do |project|
+        dir = project.directory
+        session = by_dir[dir]? || Session.new(project.name, dir, resume[dir]?)
+        session.name = project.name
+        session.parent = project.parent
+        session.level = project.level
+        session
       end
 
-      sort_sessions!(active_session)
+      restore_active(active_session)
     end
 
     # Add a root path to the config and re-discover. Returns true if the
@@ -123,8 +123,8 @@ module Aix
       cache
     end
 
-    private def sort_sessions!(active_session : Session? = nil)
-      @sessions.sort_by!(&.name.downcase)
+    # Sessions keep discovery's tree order; re-find the active one in it.
+    private def restore_active(active_session : Session? = nil)
       @active_index = @sessions.index(active_session) || -1 if active_session
     end
   end

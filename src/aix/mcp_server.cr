@@ -156,7 +156,7 @@ module Aix
     [
       {
         "name": "list_projects",
-        "description": "List all discovered AIX projects with their live state (running, cold, or stopped). A project is any directory containing a .ai/ folder under a configured root.",
+        "description": "List all discovered AIX projects with their live state (running, cold, or stopped). A project is any directory containing a .ai/ folder under a configured root. Projects form a tree: each one's parent is the project whose directory contains it (the agent above it), or null at the top. A project's name is its agent's Arcana handle without the @.",
         "inputSchema": { "type": "object", "properties": {} }
       },
       {

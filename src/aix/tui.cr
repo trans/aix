@@ -60,8 +60,10 @@ module Aix
                          when SessionState::Cold    then "Not started"
                          else                            "Stopped"
                          end
+            above = session.parent ? "Above:     #{session.parent}\n" : ""
             detail.text = "#{session.name}\n\n" \
                           "Directory: #{session.directory}\n" \
+                          "#{above}" \
                           "Status:    #{state_text}\n\n" \
                           "Enter to open, Tab to navigate"
           else
@@ -230,7 +232,7 @@ module Aix
                  when SessionState::Cold    then "○"
                  else                            "✕"
                  end
-        "#{status} #{s.name}"
+        "#{"  " * s.level}#{status} #{s.name}"
       end
     end
   end
