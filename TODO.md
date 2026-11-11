@@ -43,16 +43,44 @@ console. See memory `project_orchestrator`.
 - [x] `focus(name)` MCP tool — "patch me over to @memo" (select-window).
 - [x] `set_leader(name)` MCP tool + return-to-Leader keybind (F9); persists
       config.leader. `get_leader` reports it.
-- [ ] Leader role/system prompt: instruct the Leader to call `set_leader` on
-      itself at startup (so F9 is always bound) and to report/route via its
-      tools. (Part of `aix setup`? or the launch config.)
+- [x] Leader self-designates at startup: the `lead` project's SessionStart
+      hook calls `set_leader` for `lead` when it starts inside aix's tmux
+      session (2026-10-10). @lead is the only Leader for now (Thomas).
+- [x] Discovery is a tree of responsibility (2026-10-10): the scan goes on
+      inside projects, and a project inside another's directory is below it.
+      `list_projects` reports each one's `parent`; the TUI and console
+      indent. (Before, `~/Projects/.ai` hid every project under it.)
+- [x] Projects are named by their agent's Arcana handle (2026-10-10): the
+      handle in `.ai/config.yml` without the `@`, or Arcana's fallback (the
+      directory name, lower-cased and dashed). So the bridge's `@name` →
+      window `name` mapping holds even when they differ: `~/ai` is `lead`,
+      `infocomics` is `overlore`, `Projects` is `projects`.
 - [ ] Rebind F9 from config.leader on session (re)creation, so it survives a
       tmux server restart even before the Leader self-designates.
 - [ ] Keybinds: return-to-Leader (F9, done), detach, quit. Tentative rule:
       exit-to-shell only from the console/top-level, not from inside an agent
       pane.
-- [ ] TUI stays as a read-only dashboard (glance-able all-agents view); web UI
-      as read-only monitor later.
+- [ ] Sidebar (user, 2026-11-11): the crt UI as a narrow tmux pane beside
+      the agent's pane, in place of a full-screen attach. On a switch,
+      `join-pane` the sidebar into the agent's window, so agents keep
+      their windows and names. Target agent panes by id (`%N`), not
+      `aix:name`, once windows have two panes.
+- [ ] Sidebar file browser (user, 2026-11-11): get to the files agents
+      mention without navigating, since CLI links often don't work. Open
+      with `xdg-open`. List the files the agent touched first (from the
+      harness's session log), then `git status`, then the tree.
+- [ ] The lead passes things on by mail, then rings the bell (user,
+      2026-11-11). `send` (typing into a pane) is only for emergencies,
+      which a busy agent sees the next time it looks up. When that's too
+      late, the lead kills the offending process and tells the agent
+      afterwards.
+- [ ] Control tools for that: list the processes under an agent's pane
+      with their memory use ("is it going to OOM?"), and kill one of them.
+      `status` reports no resources, and `peek` only reads the screen.
+- [ ] Launch Claude Code with dot-ai's channel option
+      (`--dangerously-load-development-channels plugin:dot-ai@dot-ai`).
+      `Tmux.new_window` runs plain `claude`, so sessions aix starts get no
+      mail push until `aix tell` exists.
 
 ## Housekeeping
 
