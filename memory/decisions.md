@@ -60,11 +60,12 @@ handle (see `status.md`).
   messages. The Leader reads those summaries, not raw output. `peek` is the
   escape hatch.
 
-## Aix carries dot-ai mail; dot-ai keeps a reference carrier (user, 2026-11-11)
+## Aix is a runner, not a mail carrier (user, 2026-11-11)
 
-Aix becomes a mail carrier (`ai.carrier aix`). dot-ai keeps the commands
-agents use and its simple `local` carrier as the reference. The design is
-still open: see `carrier.md`.
+The carriers are `local` and `arcana`. Aix tells the sessions it runs
+about their mail and pushes only to idle ones; the hooks inside each
+session keep the start/Stop notices. This replaces the same day's choice
+of `ai.carrier aix`. See `runner.md`.
 
 ## Known limit
 

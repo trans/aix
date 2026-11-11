@@ -36,13 +36,14 @@ Before committing, check that it builds (`crystal build src/aix.cr`).
 
 ## Next
 
-From `TODO.md`, roughly in order:
+From `TODO.md`, roughly in order, plus the runner work decided on
+2026-11-11 (`runner.md`: session records, `DOT_AI_BY`, `aix tell`, the
+push glue), which `TODO.md` doesn't list yet:
 
 1. **Open:** move the bridge's nudge from polling `/events` to push. The
    firehose is changing on Arcana's side (see `coordination.md`), so wait
-   for that before writing it. Once Aix carries mail (`carrier.md`), mail
-   no longer needs the firehose; only traffic on the bus that isn't mail
-   does.
+   for that before writing it. For mail, `aix tell` replaces the nudge
+   (`runner.md`), so only bus traffic that isn't mail might still need it.
 2. **Open:** a launch config that brings agents up on the bus already
    registered, with tools pre-approved and the reporting instruction.
    First find out what the session hooks already handle. They now
