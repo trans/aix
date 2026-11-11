@@ -23,6 +23,19 @@ the meta console's Leader routing (`d596a95`), and the `focus` /
 - `7ab2062`: a real README, and `TODO.md` updated with the 2026-11-11
   decisions (`decisions.md`, `runner.md`).
 
+## Not yet committed (2026-11-11)
+
+- `crystal spec` runs: `Aix.run` moved to `src/main.cr` (`shard.yml`'s
+  main). 35 specs cover discovery, naming, config, the harness, the bell
+  and inotify.
+- The mail bell (`decisions.md`, "The mail bell"): `src/aix/bell.cr`,
+  `mail_bell.cr`, `inotify.cr`, `harness.cr`, and `aix tell`. Tested live
+  in a throwaway Claude Code window: it rings an idle session, holds for a
+  draft (leaving it alone), and gives exit 3 for an unknown window. It also
+  finds a session by Claude session id, rings on delivery through the
+  bridge, retries after a draft is cleared, and drops the ring once the
+  mail is filed.
+
 ## Next
 
 From `TODO.md`, roughly in order, plus the runner work decided on

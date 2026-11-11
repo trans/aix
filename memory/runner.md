@@ -25,7 +25,7 @@ picked it. The record:
 
 ## What aix has to build
 
-**Open, nothing built yet.** The contract is spec draft 0.4, merged into
+**Partly built (2026-11-11):** `aix tell` and `DOT_AI_BY` (items 2 and 3, and the bell for 4). Records are still to do. The contract is spec draft 0.4, merged into
 dot.ai's `main` as `5750a1a` (not pushed as of 2026-11-11), in
 `spec/mail.md`, "Runners" and "Session records". @arcana is changing the
 reference script, the tests and Arcana to match.
@@ -58,10 +58,13 @@ reference script, the tests and Arcana to match.
 4. **The glue moves to aix:** the channel server (Claude Code), `codex
    queue` (Codex) and `wake`. Nothing leaves the reference until aix
    pushes.
-5. **Keystrokes only as a fallback,** for a harness with no push path.
-   Never type into a pane waiting on a prompt, where keys could answer
-   it. Typed text also reads as the user's own words, and can mix with
-   what the user is typing.
+5. **The bell is tmux, the channel is the fallback** (user, 2026-11-11).
+   Aix types the fixed notice into an idle session's pane, guarded (see
+   `decisions.md`, "The mail bell"). dot-ai's Claude Code channel is the
+   fallback (`"mail_channel": true`). This reverses the earlier note here
+   that keystrokes were only a fallback. **Built, not yet committed**
+   (2026-11-11): `Bell`, `MailBell`, `aix tell`, and `DOT_AI_BY=aix` for
+   sessions started without the channel.
 6. **A wake-up never carries the message** (the user, 2026-11-10, per
    @tom). A push, a keystroke doorbell or a `wake` prompt says only that
    mail is waiting ("You have mail in .ai/mail/inbox/."). Another agent's

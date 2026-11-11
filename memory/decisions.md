@@ -107,6 +107,34 @@ about their mail and pushes only to idle ones; the hooks inside each
 session keep the start/Stop notices. This replaces the same day's choice
 of `ai.carrier aix`. See `runner.md`.
 
+## The mail bell: tmux, with the Claude channel as the fallback (user, 2026-11-11)
+
+The user asked whether aix needs dot-ai's Claude Code channel at all,
+since it holds every agent's pane. They decided to try tmux: "if the
+guards can work then yes", with Claude channels as the fallback. Aix
+types `You have mail in .ai/mail/inbox/.` plus Enter into the pane. The
+guards, checked live against Claude Code 2.1.322 on 2026-11-11:
+
+- **Status:** Claude Code's `sessions/<pid>.json` must say `idle`. It's
+  missing during the folder-trust dialog (whose default, "No, exit", Enter
+  would pick) and `busy` mid-turn. The pane's process is the `claude` pid,
+  since aix starts it directly.
+- **The user typing:** the pane is focused on an attached client and the
+  user pressed a key within 20 s. Not tested live: no client was attached.
+- **Draft:** the status file stays `idle` while a draft is typed, so the
+  bell reads the screen. The cursor's line must sit between two rules
+  (`────`), which keeps it out of menus that also use `❯`, and hold only
+  the mark before the cursor. Claude Code puts a no-break space after
+  `❯`, and its hint text sits after the cursor. After Escape, Claude Code
+  puts the interrupted text back in the box, which the guard treats as a
+  draft.
+
+`aix --bridge` watches inboxes with inotify and retries a held ring every
+5 s until the inbox is read. **Lesson:** Crystal's `IO::FileDescriptor.new`
+switches an fd that isn't a pipe or socket back to blocking mode, and a
+blocking inotify read stalls every fiber. `set_blocking(fd, false)` after
+wrapping it fixes that, and a spec now hangs if it regresses.
+
 ## The aix sidebar: a tmux split pane (user, 2026-11-11)
 
 Aix's UI is a narrow tmux pane beside the agent's pane, so the agent no
