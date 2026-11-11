@@ -43,6 +43,10 @@ From `TODO.md`, roughly in order:
    for that before writing it.
 2. **Open:** a launch config that brings agents up on the bus already
    registered, with tools pre-approved and the reporting instruction.
+   First find out what the session hooks already handle. They now
+   register each project as `@handle`. If Arcana's tools are also
+   pre-approved globally, little is left to do. If not, `start` passes
+   `--allowed-tools mcp__arcana__*`.
 3. **Open:** don't nudge a busy (mid-turn) session.
 4. **Open:** rebind F9 from `config.leader` whenever the session is
    created again.
