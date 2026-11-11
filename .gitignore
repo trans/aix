@@ -11,3 +11,4 @@
 /pkg/*.pkg.tar.*
 /pkg/*.log
 /pkg/aix-*/
+/.ai/
