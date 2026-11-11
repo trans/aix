@@ -107,6 +107,22 @@ about their mail and pushes only to idle ones; the hooks inside each
 session keep the start/Stop notices. This replaces the same day's choice
 of `ai.carrier aix`. See `runner.md`.
 
+## Crystal and crt, or Rust? (open, 2026-11-11)
+
+**Not decided.** The user asked whether to stay with Crystal and their own
+TUI library, crt (still beta), or move to Rust and its mature TUI
+libraries.
+
+- **Aix's agent recommends Crystal and crt**, less firmly since the TUI
+  turned out to matter more than a read-only dashboard would. The reasons:
+  - Arcana and T.O.M. are Crystal, so aix can share code with them.
+  - The work coming next (runner, tmux, processes) is plumbing with no
+    TUI in it.
+  - The agents' own screens are the harnesses in tmux, not aix's TUI.
+- **The user's point:** staying means fixing crt now and then. The
+  downside is that we handle that ourselves; the upside is that we
+  control it. T.O.M. also uses crt, so its fixes help both.
+
 ## Known limit
 
 `send` and `peek` scrape the screen (`capture_pane`). That's fine for
