@@ -76,7 +76,7 @@ in an aix pane: it forks it or skips it.
 
 T.O.M.'s notes leave one question for aix: whether `wake` covers Copious.
 From the user's point above, the answer is no: T.O.M. wakes its own
-sessions. **Not yet told to @tom.**
+sessions. **Told @tom** (`mail/sent/20261111-212257Z-@tom--does-aix-s-wake-cover-copious-no.md`): aix never tells, wakes or resumes a `by=tom` session, and sets no `DOT_AI_BY` when it runs T.O.M. in a pane.
 
 ## Open
 
