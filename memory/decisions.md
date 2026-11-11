@@ -67,11 +67,16 @@ return-to-lead keybind (`7b41a71`), and meta-console routing in the REPL
   is told "you have mail". Typing straight into an agent's pane (`send`)
   is only for emergencies, such as "OOM is imminent, stop what you are
   doing now!".
-  - **Found 2026-11-11, needs fixing:** `send` types the text and presses
-    Enter (`Tmux.send_keys`). A Claude Code session in mid-turn queues
-    typed input, and may not see it until the running tool returns. An
-    emergency send has to interrupt first (Escape), then type. Verify
-    that for Claude Code and Codex.
+  - **Emergencies come in degrees (user, 2026-11-11).** `send` types the
+    text and presses Enter (`Tmux.send_keys`), and a busy agent sees it
+    only the next time it "looks up" (when its running tool returns, or
+    its turn ends). Often that's soon enough. When it isn't, the lead
+    kills the offending process itself and tells the agent afterwards. So
+    `send` doesn't need to interrupt with Escape.
+  - **What the lead needs for that:** a way to see what's running under an
+    agent's pane, with memory use ("is it going to OOM?"), and to kill
+    one process. Today's tools can't do either: `status` reports no
+    resources, and `peek` only reads the screen. **Open**, not yet built.
   - **Found 2026-11-11:** aix starts plain `claude`
     (`tmux new-window -- claude`, `src/aix/tmux.cr`), without dot-ai's
     channel option. The user's shell alias doesn't apply there, so
