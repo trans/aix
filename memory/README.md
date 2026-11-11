@@ -16,6 +16,7 @@ working on the code needs belongs in the project's own docs, not here.
 |---|---|
 | [status.md](status.md) | Where things stand: what's committed, what's in the working tree, what's next (backlog in `TODO.md`) |
 | [decisions.md](decisions.md) | Settled design decisions and who made them: layering, harness Leader, Leader as UI, addressing, wake/data planes |
+| [carrier.md](carrier.md) | Aix as the dot-ai mail carrier (`ai.carrier aix`): decided 2026-11-11, design open |
 | [coordination.md](coordination.md) | @arcana (the bridge's push firehose, pending Arcana's rename), @lead (the Leader) |
 
 Keep each note short and dated (`*Updated YYYY-MM-DD*`), with absolute

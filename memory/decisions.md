@@ -60,6 +60,12 @@ handle (see `status.md`).
   messages. The Leader reads those summaries, not raw output. `peek` is the
   escape hatch.
 
+## Aix carries dot-ai mail; dot-ai keeps a reference carrier (user, 2026-11-11)
+
+Aix becomes a mail carrier (`ai.carrier aix`). dot-ai keeps the commands
+agents use and its simple `local` carrier as the reference. The design is
+still open: see `carrier.md`.
+
 ## Known limit
 
 `send` and `peek` scrape the screen (`capture_pane`). That's fine for
