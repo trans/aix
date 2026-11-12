@@ -10,11 +10,21 @@ require "./aix/control"
 require "./aix/mcp_server"
 require "./aix/arcana"
 require "./aix/bus_bridge"
+require "./aix/bell"
+require "./aix/mail_bell"
 
 module Aix
   VERSION = "0.2.0"
 
   def self.run
+    if ARGV.first? == "tell"
+      exit tell(ARGV[1]?)
+    end
+
+    if ARGV.first? == "update"
+      exit update
+    end
+
     if ARGV.includes?("--mcp")
       # MCP stdio server: stdout is reserved for protocol messages only.
       MCPServer.new.run
@@ -51,6 +61,47 @@ module Aix
     manager.stop_all
     Tmux.kill_session if manager.sessions.all? { |s| !s.running? }
     puts "Goodbye."
+  end
+
+  # `aix tell ID`: ring the bell for one session, by its window name or its
+  # Claude Code session id. This is the `tell` dot-ai's carrier runs for a
+  # session whose runner is aix (dot-ai's spec, "Runners"); its exit status
+  # is the spec's: 0 told (or will be at the end of its turn), 3 not open,
+  # 4 can't be told now.
+  def self.tell(id : String?) : Int32
+    unless id
+      STDERR.puts "usage: aix tell <window | Claude Code session id>"
+      return 2
+    end
+    window = tell_window(id)
+    unless window
+      puts "#{id}: not open in aix"
+      return Bell::Result::NotOpen.exit_status
+    end
+    result, reason = Bell.ring(window)
+    puts "#{window}: #{result.to_s.downcase}, #{reason}"
+    result.exit_status
+  end
+
+  # `aix update`: have the running bridge's bell search for projects
+  # again, so it watches the inboxes of projects set up since it started
+  # and forgets those gone. The bell searches only at its start and on this.
+  def self.update : Int32
+    if reply = MailBell.request("update")
+      puts reply
+    else
+      puts "no bridge is running: `aix --bridge` searches when it starts"
+    end
+    0
+  end
+
+  # The window for a session: a window by that name, or the one whose pane
+  # runs the Claude Code session with that id.
+  private def self.tell_window(id : String) : String?
+    return id if Tmux.window_exists?(id)
+    pid = Harness.claude_pid(id) || return nil
+    parent = Harness.parent_pid(pid)
+    Tmux.window_pids.find { |_name, pane_pid| pane_pid == pid || pane_pid == parent }.try(&.[0])
   end
 
   def self.run_web
@@ -137,5 +188,3 @@ module Aix
     end
   end
 end
-
-Aix.run

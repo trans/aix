@@ -6,7 +6,7 @@ authors:
 
 targets:
   aix:
-    main: src/aix.cr
+    main: src/main.cr
 
 dependencies:
   fancyline:

@@ -1,5 +1,7 @@
 require "./arcana"
 require "./tmux"
+require "./bell"
+require "./mail_bell"
 
 module Aix
   # The bus bridge — AIX's "nervous system" that makes reactive tmux harnesses
@@ -32,11 +34,24 @@ module Aix
       @cursor = ""
     end
 
+    # Ring for dot-ai mail (`MailBell`), and for messages on Arcana's bus
+    # when the bus is up. The mail bell needs nothing else running.
     def run
-      log "registering service '#{ADDRESS}' on #{@arcana.base_uri}"
-      @arcana.register(name: "AIX bridge", description: "AIX bus bridge — wakes tmux agents on incoming mail",
-        kind: "service", tags: ["orchestrator", "multiplexer"], listed: false)
-      bootstrap_cursor
+      bell = MailBell.new
+      unless bell.listen
+        log "a bridge is already running (#{MailBell.socket_path}): not starting another"
+        exit 1
+      end
+      spawn { bell.run }
+      begin
+        log "registering service '#{ADDRESS}' on #{@arcana.base_uri}"
+        @arcana.register(name: "AIX bridge", description: "AIX bus bridge — wakes tmux agents on incoming mail",
+          kind: "service", tags: ["orchestrator", "multiplexer"], listed: false)
+        bootstrap_cursor
+      rescue ex
+        log "Arcana unavailable (#{ex.message}): ringing for dot-ai mail only"
+        sleep # forever: the mail bell runs on
+      end
       poll_loop
     end
 
@@ -99,8 +114,9 @@ module Aix
       end
       @last_nudge[name] = now
 
-      Tmux.send_keys(name, WAKE_TEXT)
-      log "nudged '#{name}' (mail for #{address})"
+      # Through the bell's guards, never straight into the pane.
+      result, reason = Bell.ring(name, WAKE_TEXT)
+      log "bus message for #{address}: #{result.to_s.downcase}, #{reason}"
     end
 
     # TODO(pubsub): once Arcana ships the sys.message.sent firehose, replace

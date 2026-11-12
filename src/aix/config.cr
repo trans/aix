@@ -28,9 +28,38 @@ module Aix
     property depth : Int32
     # The project designated as Leader (return-to-Leader keybind target).
     property leader : String?
+    # Start Claude Code with dot-ai's mail channel, the fallback to aix's
+    # bell (`Harness`, `Bell`): `"mail": {"channel": true}`. Off otherwise.
+    property mail_channel : Bool
 
     def initialize(@roots : Array(String) = [] of String, @depth : Int32 = DEFAULT_DEPTH,
-                   @leader : String? = nil)
+                   @leader : String? = nil, @mail_channel : Bool = false)
+    end
+
+    # How far below a search root dot-ai's carrier looks for projects.
+    DOT_AI_DEPTH = 4
+
+    # The projects dot-ai's carrier delivers mail to, found the way it finds
+    # them (dot-ai's spec, `spec/mail.md`, "Finding projects"): under the
+    # directories in git config's `ai.path`, up to 4 levels down. The bell
+    # watches these inboxes, so it rings for every project mail can reach,
+    # wherever the user keeps them, and follows when `ai.path` changes.
+    # Without `ai.path`, aix's own roots.
+    def self.mail_search : Config
+      paths = dot_ai_paths
+      paths.empty? ? load : new(paths, depth: DOT_AI_DEPTH)
+    end
+
+    # git config's `ai.path`, with `~` expanded. Read from the home
+    # directory, so no repository's own config joins in.
+    def self.dot_ai_paths : Array(String)
+      output = IO::Memory.new
+      status = Process.run("git", ["config", "--get-all", "--type=path", "ai.path"],
+        output: output, error: Process::Redirect::Close, chdir: Path.home.to_s)
+      return [] of String unless status.success?
+      output.to_s.lines.map(&.strip).reject(&.empty?)
+    rescue
+      [] of String # no git
     end
 
     def self.config_dir : String
@@ -48,14 +77,15 @@ module Aix
       roots = raw["roots"]?.try(&.as_a?).try(&.compact_map(&.as_s?)) || [] of String
       depth = raw["depth"]?.try(&.as_i?) || DEFAULT_DEPTH
       leader = raw["leader"]?.try(&.as_s?)
-      new(roots, depth, leader)
+      mail_channel = raw["mail"]?.try(&.as_h?).try(&.["channel"]?).try(&.as_bool?)
+      new(roots, depth, leader, mail_channel || false)
     rescue
       new
     end
 
     def save
       Dir.mkdir_p(self.class.config_dir)
-      File.write(self.class.path, {roots: @roots, depth: @depth, leader: @leader}.to_json)
+      File.write(self.class.path, {roots: @roots, depth: @depth, leader: @leader, mail: {channel: @mail_channel}}.to_json)
     end
 
     # Add a root path (kept verbatim so `~` stays portable). Returns false
@@ -86,7 +116,9 @@ module Aix
     def discover : Array(Project)
       found = Set(String).new
       @roots.each do |root|
-        dir = SessionManager.expand_directory(root)
+        # A root is followed even if it's a link (the user named it), but
+        # by its real path, so two roots reaching one place agree.
+        dir = File.realpath(SessionManager.expand_directory(root)) rescue next
         next unless Dir.exists?(dir)
         scan(dir, @depth, found)
       end
@@ -127,8 +159,11 @@ module Aix
       name =~ /\A[a-z]/ ? name : "agent-#{name}"
     end
 
-    # Overlapping roots can reach a directory twice; `found` being a set
-    # keeps each project once.
+    # Symbolic links aren't followed, so each project is found once, where
+    # it really is (as dot-ai finds projects): a link to a project would
+    # find it twice, and two projects with one handle get neither's name.
+    # Overlapping roots can still reach a directory twice; `found` being a
+    # set keeps each project once.
     private def scan(dir : String, remaining : Int32, found : Set(String))
       found << dir if Dir.exists?(File.join(dir, ".ai"))
 
@@ -138,6 +173,7 @@ module Aix
         next if child.starts_with?(".")
         next if IGNORE_DIRS.includes?(child)
         path = File.join(dir, child)
+        next if File.symlink?(path)
         next unless Dir.exists?(path)
         scan(path, remaining - 1, found)
       end

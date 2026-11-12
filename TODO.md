@@ -24,8 +24,8 @@
       register as `@<name>`, pre-approve Arcana MCP tools (no permission
       prompts), inject the standing "report to @aix / check mail when nudged"
       instruction. (Kills the manual register/approve steps.)
-- [ ] Don't nudge a session that is mid-turn (busy) — detect idle before
-      injecting keystrokes, or debounce more intelligently than a flat cooldown.
+- [x] Don't nudge a session that is mid-turn (busy): the bus nudge now goes
+      through the bell's guards (2026-11-11).
 - [ ] Gate nudges on discovered projects (not just any live window) once the
       Leader/orchestrator wiring lands.
 - [ ] Surface/relay inbox messages to the Leader instead of just logging
@@ -77,14 +77,35 @@ console. See memory `project_orchestrator`.
 - [ ] Control tools for that: list the processes under an agent's pane
       with their memory use ("is it going to OOM?"), and kill one of them.
       `status` reports no resources, and `peek` only reads the screen.
-- [ ] Launch Claude Code with dot-ai's channel option
-      (`--dangerously-load-development-channels plugin:dot-ai@dot-ai`).
-      `Tmux.new_window` runs plain `claude`, so sessions aix starts get no
-      mail push until `aix tell` exists.
+- [x] The mail bell (2026-11-11): aix types the fixed notice into an
+      agent's pane when it's idle at an empty prompt (`Bell`). `aix
+      --bridge` watches inboxes with inotify and rings, retrying while
+      held; `aix tell ID` rings once. dot-ai's Claude Code channel is the
+      fallback, with `"mail": {"channel": true}`.
+- [ ] Bell, untested live: the "user is typing in that pane" guard needs
+      an attached client. Codex panes: no status file to read yet, so the
+      bell holds for them.
+- [ ] `aix tell` for a session with `by=aix` that isn't in a pane (one an
+      aix session started, which inherited `DOT_AI_BY`): answer 4 while
+      its process lives, not 3 (told @tom, 2026-11-12).
+- [ ] Codex in aix: start `codex --no-daemon` with `DOT_AI_BY=aix`. Its
+      app server runs in the pane's process, and its hooks see the
+      variable (tested 2026-11-12). A plain `codex` uses the shared daemon
+      and gets the daemon's environment instead.
+- [ ] Bell, once the sidebar shares windows: `Tmux.pane_info` takes a
+      window's first pane, which has to be the agent's.
+- [x] The bell finds projects as dot-ai's carrier does (git config's
+      `ai.path`, 4 levels, no symbolic links), at the start and on `aix
+      update`, which reaches it over its socket (2026-11-11). No timer
+      searches.
+- [ ] aix's own project list still comes from `roots` (`~/Projects` one
+      level, `~/ai`), so the projects in `~/air`, `~/my` and inside
+      `siliconcircus.lol` can't be started from aix, and the bell has no
+      window to ring for them. Proposed: the list comes from `ai.path` too.
 
 ## Housekeeping
 
-- [ ] `crystal spec` is unrunnable: `spec/spec_helper.cr` requires
-      `../src/aix`, whose last line is `Aix.run` (launches the TUI). Guard the
-      entry point before adding real specs.
-- [ ] README is still boilerplate.
+- [x] `crystal spec` runs (2026-11-11): the entry point moved to
+      `src/main.cr`, so specs require `src/aix.cr` without launching the
+      TUI. Specs cover discovery, handle naming, config and harness args.
+- [x] README describes aix (2026-11-11).

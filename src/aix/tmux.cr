@@ -37,10 +37,15 @@ module Aix
       output.to_s.split('\n').any? { |w| w.strip == name }
     end
 
-    # Create a new window running claude with the given args.
-    def self.new_window(name : String, directory : String, args : Array(String) = [] of String)
+    # Create a new window running claude with the given args, and `env`
+    # set in its environment.
+    def self.new_window(name : String, directory : String, args : Array(String) = [] of String,
+                        env : Hash(String, String) = {} of String => String)
       ensure_session
-      tmux_args = ["new-window", "-t", SESSION, "-n", name, "-c", directory, "--", "claude"] + args
+      tmux_args = ["new-window", "-t", SESSION, "-n", name, "-c", directory]
+      env.each { |key, value| tmux_args.concat(["-e", "#{key}=#{value}"]) }
+      tmux_args.concat(["--", "claude"])
+      tmux_args.concat(args)
       err = IO::Memory.new
       result = Process.run("tmux", tmux_args, error: err)
       raise "tmux new-window: #{err.to_s.strip}" unless result.success?
@@ -133,6 +138,75 @@ module Aix
     # Resize a window to better fit a browser client.
     def self.resize_window(name : String, cols : Int32, rows : Int32)
       run("resize-window", "-t", "#{SESSION}:#{name}", "-x", cols.to_s, "-y", rows.to_s)
+    end
+
+    # A pane's state, as the bell needs it: which pane, its process, whether
+    # it has the user's keys (the active pane of the active window of a
+    # session someone is attached to), and where its cursor is.
+    record PaneInfo, id : String, pid : Int64, focused : Bool, cursor_x : Int32, cursor_y : Int32
+
+    # The agent's pane in a window of the aix session (its first pane), or
+    # nil if there's no window by that exact name.
+    def self.pane_info(window : String) : PaneInfo?
+      format = "\#{pane_id}\t\#{pane_pid}\t\#{pane_active}\t\#{window_active}\t" \
+               "\#{session_attached}\t\#{cursor_x}\t\#{cursor_y}"
+      line = capture("list-panes", "-t", "#{SESSION}:=#{window}", "-F", format).lines.first?
+      return nil unless line
+      id, pid, pane_active, window_active, attached, x, y = line.split('\t')
+      focused = pane_active == "1" && window_active == "1" && attached.to_i > 0
+      PaneInfo.new(id, pid.to_i64, focused, x.to_i, y.to_i)
+    rescue
+      nil
+    end
+
+    # The windows of the aix session, with their first pane's process.
+    def self.window_pids : Array({String, Int64})
+      capture("list-panes", "-s", "-t", SESSION, "-F", "\#{window_name}\t\#{pane_index}\t\#{pane_pid}")
+        .lines.compact_map do |line|
+          name, index, pid = line.split('\t')
+          index == "0" ? {name, pid.to_i64} : nil
+        end
+    rescue
+      [] of {String, Int64}
+    end
+
+    # When a client attached to the aix session last had a key from the
+    # user, or nil if none is attached.
+    def self.last_client_activity : Time?
+      capture("list-clients", "-t", SESSION, "-F", "\#{client_activity}")
+        .lines.compact_map(&.strip.to_i64?).max?.try { |secs| Time.unix(secs) }
+    rescue
+      nil
+    end
+
+    # Visible lines `from` to `to` of a pane (0 is the top line). A line
+    # outside the pane comes back empty.
+    def self.pane_lines(pane_id : String, from : Int32, to : Int32) : Array(String)
+      lines = (from..to).map { "" }
+      first = {from, 0}.max
+      return lines if to < first
+      captured = capture("capture-pane", "-p", "-t", pane_id, "-S", first.to_s, "-E", to.to_s).lines
+      captured.each_with_index { |text, i| lines[first - from + i] = text if first - from + i < lines.size }
+      lines
+    end
+
+    # Type `text` into a pane, then press Enter. The text goes literally, so
+    # nothing in it is read as a key name; Enter follows a moment later so
+    # the harness doesn't take it as part of a paste.
+    def self.type_line(pane_id : String, text : String)
+      run("send-keys", "-t", pane_id, "-l", text)
+      sleep 150.milliseconds
+      run("send-keys", "-t", pane_id, "Enter")
+    end
+
+    # Show a message on every client attached to the aix session.
+    def self.display_message(text : String, duration : Time::Span = 5.seconds)
+      capture("list-clients", "-t", SESSION, "-F", "\#{client_name}").lines.each do |client|
+        next if client.strip.empty?
+        run("display-message", "-c", client.strip, "-d", duration.total_milliseconds.to_i.to_s, text)
+      end
+    rescue
+      # No clients, or the session is gone: nobody to show it to.
     end
 
     # Clean up — kill the whole session.

@@ -1,5 +1,6 @@
 require "json"
 require "./tmux"
+require "./harness"
 
 module Aix
   enum SessionState
@@ -16,6 +17,9 @@ module Aix
     # how many projects are above it.
     property parent : String?
     property level : Int32 = 0
+    # Whether to start Claude Code with dot-ai's mail channel, the bell's
+    # fallback (`Harness`), from the config's `mail.channel`.
+    property mail_channel : Bool = false
 
     def initialize(@name : String, @directory : String, @claude_session_id : String? = nil)
     end
@@ -36,10 +40,13 @@ module Aix
       state == SessionState::Cold
     end
 
-    # Start Claude Code in a tmux window.
+    # Start Claude Code in a tmux window. aix's bell tells it of mail
+    # (`Bell`), or dot-ai's mail channel does when the config's `mail.channel` is on
+    # (`Harness.claude_args`).
     def start(args : Array(String) = [] of String)
       raise "Session '#{@name}' is already running" if running?
-      Tmux.new_window(@name, @directory, args)
+      claude_args = Harness.claude_args(args, @mail_channel)
+      Tmux.new_window(@name, @directory, claude_args, Harness.session_env(claude_args))
       @started = true
       capture_claude_session_id
     end

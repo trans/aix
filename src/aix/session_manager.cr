@@ -40,6 +40,7 @@ module Aix
         session.name = project.name
         session.parent = project.parent
         session.level = project.level
+        session.mail_channel = @config.mail_channel
         session
       end
 
