@@ -115,7 +115,10 @@ guards can work then yes", with Claude channels as the fallback. Aix
 types `You have mail in .ai/mail/inbox/.` plus Enter into the pane. The
 guards, checked live against Claude Code 2.1.322 on 2026-11-11:
 
-- **Status:** Claude Code's `sessions/<pid>.json` must say `idle`. It's
+- **Status:** Claude Code's `sessions/<pid>.json` must say `idle`, or
+  `shell` (idle, with a background command running; per Arcana's
+  `mail-push.md`, dot-ai 0.6.1 counts it as idle too). Claude Code writes
+  this file itself and deletes it at exit. It's undocumented. It's
   missing during the folder-trust dialog (whose default, "No, exit", Enter
   would pick) and `busy` mid-turn. The pane's process is the `claude` pid,
   since aix starts it directly.
