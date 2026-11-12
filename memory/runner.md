@@ -61,7 +61,7 @@ reference script, the tests and Arcana to match.
 5. **The bell is tmux, the channel is the fallback** (user, 2026-11-11).
    Aix types the fixed notice into an idle session's pane, guarded (see
    `decisions.md`, "The mail bell"). dot-ai's Claude Code channel is the
-   fallback (`"mail-channel": true`). This reverses the earlier note here
+   fallback (`"mail": {"channel": true}` in aix's `config.json`). This reverses the earlier note here
    that keystrokes were only a fallback. **Built, not yet committed**
    (2026-11-11): `Bell`, `MailBell`, `aix tell`, and `DOT_AI_BY=aix` for
    sessions started without the channel.
