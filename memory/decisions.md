@@ -133,7 +133,20 @@ guards, checked live against Claude Code 2.1.322 on 2026-11-11:
   draft.
 
 `aix --bridge` watches inboxes with inotify and retries a held ring every
-5 s until the inbox is read. **Lesson:** Crystal's `IO::FileDescriptor.new`
+5 s until the inbox is read.
+
+**Which inboxes, and no rescan timer (user, 2026-11-11).** The bell finds
+projects the way dot-ai's carrier does (git config's `ai.path`, 4 levels,
+no symbolic links), so it watches every inbox mail can reach; aix's own
+`roots` are only the fallback. It searches at the start, and again on
+`aix update`, which reaches the running bell over its socket
+(`$XDG_RUNTIME_DIR/aix/bell.sock`). The user turned down a rescan every 5
+minutes ("another poll?"), and then a per-project `aix add` for one
+command that searches again ("I may have over thought it"). The carrier never makes an
+inbox, so a new one appears only when a project is set up. The socket
+also keeps the bridge to one: a second finds the first and won't start.
+The user's layout is still moving (`~/air` likely goes under `~/my`), so
+nothing in aix names those folders. **Lesson:** Crystal's `IO::FileDescriptor.new`
 switches an fd that isn't a pipe or socket back to blocking mode, and a
 blocking inotify read stalls every fiber. `set_blocking(fd, false)` after
 wrapping it fixes that, and a spec now hangs if it regresses.

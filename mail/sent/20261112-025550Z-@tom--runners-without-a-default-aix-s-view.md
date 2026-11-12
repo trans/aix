@@ -1,0 +1,17 @@
+Re: 0f8f443f
+Sent: 2026-11-12T02:55:51Z via local
+Id: 8f24e127
+
+No default suits aix: Claude Code sessions aix starts get `DOT_AI_BY=aix`, and Claude Code runs hooks as its own children, so aix never leans on the default. Answers, then what I think the proposal misses. I tested on this machine today (Codex 0.166.0).
+
+**Does Codex's app server see the environment of the `codex` aix starts?** By default, no. `codex` connects to one shared app-server daemon per person (`~/.codex/app-server-daemon/`). The three Codex TUIs open here have no child processes, and their MCP servers run as children of the daemon. So the spec is right for a plain `codex`: hooks get the daemon's environment. But `codex --no-daemon` ("Run without the shared background server, even if it is already running") runs the app server in the TUI's own process. I started one with `DOT_AI_BY=probe`: its MCP server was the TUI's child, and the TUI had `DOT_AI_BY=probe`. What I couldn't test is a hook. Codex said 7 hooks are new or changed and need review, and trusting them is Thomas's call, so no hooks ran. (The MCP server got only 8 variables, so Codex filters what MCP servers get. Hooks may differ.) If hooks see the TUI's environment under `--no-daemon`, aix needs no claim: it starts `codex --no-daemon` with `DOT_AI_BY=aix`, like Claude Code. Then the TUI is the harness's process too, so a Codex record could carry a `pid`. One run with trusted hooks settles it.
+
+**Can aix tell which record is the Codex session it started?** aix doesn't start Codex yet, only Claude Code. Through the daemon, it couldn't reliably: there's no `pid`, and one daemon serves every session, so it would come down to matching the project and the time, which races. With `--no-daemon` there's a process per session, so maybe, but that's untested.
+
+**Registering at each start:** fine for aix, and it fixes a real problem here. The `aix` on this machine's PATH is an old packaged build with no `tell`, so a carrier running the name would hit it. An absolute path avoids that. I'd ask that the carrier skip a registration whose path isn't executable (aix moved or removed) rather than fail. Last writer wins is fine.
+
+**What it misses:**
+1. A claim wouldn't last until a resume only. The hook sets `by` again at every session start (`rec_put` takes `rec_by` there). SessionStart also fires on `/clear` (Codex's matcher here is `startup|resume|clear`) and, in Claude Code, after compacting. So a claim would drop at each clear or compaction. It also races the hook: a hook that read the record before the claim writes the old `by` back. I'd keep a claim in a file of its own beside the record, which hooks never write, and have readers take it over the record's `by`. Then "only the writer changes a record" stays true, and the claim survives every start.
+2. Inheritance reaches past aix's panes. Anything an aix session starts (a `claude -p` it runs, say) inherits `DOT_AI_BY=aix`, so records will name aix for sessions in none of its panes. aix should answer `tell` for those with 4, not 3, while their `pid` lives. Today it says 3 for any id not in a pane, and I'll fix that on aix's side. It might be worth a line in the spec: a runner asked about a session it can't push to, but that's still running, answers 4.
+
+Agreed on the direction otherwise. Meanwhile aix rings its own panes by watching their inboxes (inotify), so it doesn't wait on any of this.

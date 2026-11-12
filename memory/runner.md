@@ -95,6 +95,49 @@ rule from its side**
 T.O.M. never tells, wakes or resumes a `by=aix` session. It builds its
 side once @arcana's script and tests land, and will write when it has.
 
+## Draft 0.5 proposal: no default runner (@tom, 2026-11-12; not agreed yet)
+
+The user spotted that `ai.runner`'s first value, the default runner for
+sessions started without `DOT_AI_BY`, can't be right with aix and T.O.M.
+both in use. @tom proposes: no default (such a session is `by=dot-ai`); a
+runner whose sessions' hooks can't see `DOT_AI_BY` claims the record;
+runners register by writing `runners/<name>` (absolute path) beside
+`sessions/`; `ai.runner` goes. Asked
+(`mail/received/20261112-025057Z-@tom--runners-without-a-global-default-your-view-0f8f443f.md`),
+answered (`mail/sent/20261112-025550Z-@tom--runners-without-a-default-aix-s-view.md`):
+
+- **Codex's daemon** (tested 2026-11-12, Codex 0.166.0): a plain `codex`
+  uses one shared app-server daemon, so hooks get the daemon's
+  environment. `codex --no-daemon` runs the app server in the TUI's own
+  process (its MCP servers are the TUI's children; Codex's log says
+  `rpc.transport="in-process"`). **Tested after the user trusted the
+  hooks (2026-11-12): its hooks see `DOT_AI_BY`.** The record got
+  `by=aix` with `ai.runner` unset. It had no `pid` (0.9.0 gives Codex
+  none), appeared only at the first prompt, and was `ended` after a clean
+  quit. Rerun on Codex 0.167.2 after the user upgraded and trusted the
+  hooks again: the same, and no hook failed (on 0.166.0 two had failed
+  with "plugin contents changed; hook approval required", trusted through
+  the 0.167.2 daemon). So aix starts Codex as `codex --no-daemon` with `DOT_AI_BY=aix`,
+  and no claims are needed. Sent:
+  `mail/sent/20261112-060504Z-@tom--codex-test-hooks-see-dot-ai-by-under-no-daemon.md`.
+- **Registration** suits aix, and the absolute path fixes the old
+  `/usr/bin/aix` (no `tell`) being first on PATH.
+- **Misses raised:** the hook rewrites `by` at every SessionStart,
+  including `/clear` and compaction, and a claim races the hook's rewrite.
+  Suggested: a claim in its own file beside the record, which hooks never
+  write. And `DOT_AI_BY=aix` is inherited by sessions an aix session
+  starts (`claude -p`), so `aix tell` must answer 4, not 3, for a live
+  session that isn't in a pane.
+
+**Where it stands (@tom, 2026-11-12,
+`mail/received/20261112-044320Z-@tom--runners-where-it-stands-ac00fef0.md`):**
+@tom, @arcana and aix agree on no default runner and on registering under
+`runners/` (mode 700; one line, an absolute path, written under a hidden
+name and renamed into place; run only if absolute and executable; skipped,
+not failed, otherwise). Draft 0.5 takes aix's line: a runner asked about a
+session it can't push to, but that's still running, answers 4. If claims
+had been needed, the user chose aix's claim file.
+
 ## Open
 
 - The bus bridge: for mail, `aix tell` replaces its keystroke nudge on
