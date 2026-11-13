@@ -176,6 +176,12 @@ describe "Aix::Config's search" do
           config.remove_root(File.join(root, "a")).should be_true
           Aix::Config.dot_ai_paths.should eq [File.join(root, "b")]
           config.remove_root(File.join(root, "a")).should be_false
+
+          Dir.mkdir_p(File.join(root, "c"))
+          Dir.cd(root) { config.add_root("c").should be_true }
+          Aix::Config.dot_ai_paths(expand: false).last.should eq File.join(root, "c")
+          config.add_root("~/somewhere")
+          Aix::Config.dot_ai_paths(expand: false).last.should eq "~/somewhere"
         end
       end
     end

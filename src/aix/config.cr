@@ -106,11 +106,13 @@ module Aix
       File.write(self.class.path, {roots: @roots, depth: @depth, leader: @leader, mail: {channel: @mail_channel}}.to_json)
     end
 
-    # Add a directory to search, kept as given so `~` stays portable: to
-    # git config's `ai.path` when the search follows it (so dot-ai searches
-    # it too), else to aix's own roots. Returns false if it's searched
-    # already.
+    # Add a directory to search: to git config's `ai.path` when the search
+    # follows it (so dot-ai searches it too), else to aix's own roots. A
+    # path starting with `~` is kept so, to stay portable; any other is
+    # made absolute, since a relative one would be read from wherever its
+    # reader runs. Returns false if it's searched already.
     def add_root(path : String) : Bool
+      path = File.expand_path(path) unless path.starts_with?('~')
       return false if search_roots.any? { |root| Config.same_dir?(root, path) }
       if ai_path?
         Process.run("git", ["config", "--global", "--add", "ai.path", path]).success?
