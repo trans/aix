@@ -134,7 +134,7 @@ module Aix
         if @manager.add_root(path)
           puts "Added root '#{path}'. #{@manager.sessions.size} project(s) discovered."
         else
-          puts "Root '#{path}' is already configured."
+          puts "Root '#{path}' is already searched."
         end
       rescue ex
         puts "Error: #{ex.message}"
@@ -142,12 +142,14 @@ module Aix
     end
 
     private def cmd_roots
-      roots = @manager.config.roots
+      config = @manager.config
+      roots = config.search_roots
       if roots.empty?
-        puts "No roots configured. Add one with: add <root-path>"
+        puts "No roots to search. Add one with: add <root-path>"
         return
       end
-      puts "Roots (scan depth #{@manager.config.depth}):"
+      from = config.ai_path? ? "git config's ai.path" : "aix's config"
+      puts "Roots, from #{from} (searched #{config.search_depth} levels down):"
       roots.each { |r| puts "  #{r}" }
     end
 

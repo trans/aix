@@ -29,9 +29,11 @@ module Aix
       info(require_session(name))
     end
 
-    # Configured root paths and scan depth.
+    # The directories searched for projects, how deep, and where the list
+    # comes from: git config's `ai.path`, or aix's own config without it.
     def roots
-      {roots: @manager.config.roots, depth: @manager.config.depth}
+      config = @manager.config
+      {roots: config.search_roots, depth: config.search_depth, from: config.ai_path? ? "ai.path" : "config"}
     end
 
     # Add a root path and re-discover. Returns whether it was newly added
@@ -41,7 +43,7 @@ module Aix
       {added: added, count: @manager.sessions.size}
     end
 
-    # Re-scan roots for projects.
+    # Search for projects again.
     def refresh
       @manager.refresh
       {ok: true, count: @manager.sessions.size}

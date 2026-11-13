@@ -2,28 +2,36 @@ require "json"
 require "yaml"
 
 module Aix
-  # AIX configuration: a set of root paths that are scanned for projects.
+  # AIX configuration, and where it finds projects.
   #
-  # A "project" is any directory, within `depth` levels of a root, that
-  # contains a `.ai/` directory. This replaces manually registering each
-  # project directory — you point AIX at the root(s) and it discovers the
-  # rest. Projects nest into a tree of responsibility: a project inside
-  # another project's directory is below it, and that project's agent is
-  # the one above it. A project is named by its agent's Arcana handle, so
-  # the bus bridge can find an agent's window from its address.
+  # A project is any directory holding a `.ai/` directory. aix finds them
+  # as dot-ai does (its spec, `spec/mail.md`, "Finding projects"): under
+  # the directories in git config's `ai.path`, up to 4 levels down, without
+  # following symbolic links or searching hidden directories and
+  # `node_modules/`. So aix lists the projects dot-ai's carrier delivers
+  # mail to, and follows when `ai.path` changes. Without `ai.path`, it
+  # searches its own `roots`, `depth` levels down.
+  #
+  # Projects nest into a tree of responsibility: a project inside another
+  # project's directory is below it, and that project's agent is the one
+  # above it. A project is named by its agent's handle, so the bell finds
+  # an agent's window from its address.
   #
   # Stored at `$XDG_CONFIG_HOME/aix/config.json` (default `~/.config/aix`).
   class Config
     FILENAME      = "config.json"
     DEFAULT_DEPTH = 1
-    # Directories never descended into while scanning for projects.
-    IGNORE_DIRS = %w[node_modules vendor target dist build]
+    # How far below a search root dot-ai looks for projects.
+    DOT_AI_DEPTH = 4
+    # Directories never searched, besides hidden ones (as dot-ai).
+    IGNORE_DIRS = %w[node_modules]
 
     # A discovered project. `parent` names the project above it (the
     # nearest project whose directory contains this one), or is nil at the
     # top of the tree; `level` counts the projects above it.
     record Project, name : String, directory : String, parent : String? = nil, level : Int32 = 0
 
+    # aix's own roots and depth, searched only without `ai.path`.
     property roots : Array(String)
     property depth : Int32
     # The project designated as Leader (return-to-Leader keybind target).
@@ -36,26 +44,36 @@ module Aix
                    @leader : String? = nil, @mail_channel : Bool = false)
     end
 
-    # How far below a search root dot-ai's carrier looks for projects.
-    DOT_AI_DEPTH = 4
-
-    # The projects dot-ai's carrier delivers mail to, found the way it finds
-    # them (dot-ai's spec, `spec/mail.md`, "Finding projects"): under the
-    # directories in git config's `ai.path`, up to 4 levels down. The bell
-    # watches these inboxes, so it rings for every project mail can reach,
-    # wherever the user keeps them, and follows when `ai.path` changes.
-    # Without `ai.path`, aix's own roots.
-    def self.mail_search : Config
-      paths = dot_ai_paths
-      paths.empty? ? load : new(paths, depth: DOT_AI_DEPTH)
+    # The directories searched for projects: `ai.path`'s, or without any,
+    # aix's own `roots`.
+    def search_roots : Array(String)
+      paths = Config.dot_ai_paths
+      paths.empty? ? @roots : paths
     end
 
-    # git config's `ai.path`, with `~` expanded. Read from the home
-    # directory, so no repository's own config joins in.
-    def self.dot_ai_paths : Array(String)
+    # How far below a search root projects are looked for.
+    def search_depth : Int32
+      ai_path? ? DOT_AI_DEPTH : @depth
+    end
+
+    # Whether the search follows git config's `ai.path`.
+    def ai_path? : Bool
+      !Config.dot_ai_paths.empty?
+    end
+
+    # git config's `ai.path`, with `~` expanded, read as dot-ai reads it:
+    # from the person's own config (`--global`), or the system's where that
+    # sets none, never from a repository's.
+    def self.dot_ai_paths(expand : Bool = true) : Array(String)
+      paths = git_config_values("--global", expand)
+      paths.empty? ? git_config_values("--system", expand) : paths
+    end
+
+    private def self.git_config_values(scope : String, expand : Bool) : Array(String)
+      args = ["config", scope, "--get-all", "ai.path"]
+      args.insert(2, "--type=path") if expand
       output = IO::Memory.new
-      status = Process.run("git", ["config", "--get-all", "--type=path", "ai.path"],
-        output: output, error: Process::Redirect::Close, chdir: Path.home.to_s)
+      status = Process.run("git", args, output: output, error: Process::Redirect::Close)
       return [] of String unless status.success?
       output.to_s.lines.map(&.strip).reject(&.empty?)
     rescue
@@ -88,39 +106,62 @@ module Aix
       File.write(self.class.path, {roots: @roots, depth: @depth, leader: @leader, mail: {channel: @mail_channel}}.to_json)
     end
 
-    # Add a root path (kept verbatim so `~` stays portable). Returns false
-    # if an equivalent root is already configured.
+    # Add a directory to search, kept as given so `~` stays portable: to
+    # git config's `ai.path` when the search follows it (so dot-ai searches
+    # it too), else to aix's own roots. Returns false if it's searched
+    # already.
     def add_root(path : String) : Bool
-      normalized = SessionManager.expand_directory(path)
-      return false if @roots.any? { |r| SessionManager.expand_directory(r) == normalized }
-      @roots << path
-      save
-      true
+      return false if search_roots.any? { |root| Config.same_dir?(root, path) }
+      if ai_path?
+        Process.run("git", ["config", "--global", "--add", "ai.path", path]).success?
+      else
+        @roots << path
+        save
+        true
+      end
     end
 
-    # Remove a root by literal value or expanded-path equivalence.
+    # Stop searching a directory: take it out of git config's `ai.path`
+    # when the search follows it, else out of aix's own roots.
     def remove_root(path : String) : Bool
-      target = SessionManager.expand_directory(path)
-      before = @roots.size
-      @roots.reject! { |r| r == path || SessionManager.expand_directory(r) == target }
-      changed = @roots.size != before
-      save if changed
-      changed
+      if ai_path?
+        values = Config.dot_ai_paths(expand: false)
+        expanded = Config.dot_ai_paths
+        gone = values.zip?(expanded).select { |raw, full| raw == path || Config.same_dir?(full || raw, path) }.map(&.[0]).uniq
+        gone.all? { |raw| Process.run("git", ["config", "--global", "--fixed-value", "--unset-all", "ai.path", raw]).success? } && !gone.empty?
+      else
+        before = @roots.size
+        @roots.reject! { |root| root == path || Config.same_dir?(root, path) }
+        changed = @roots.size != before
+        save if changed
+        changed
+      end
+    end
+
+    # Whether two paths name one directory, `~` and links resolved.
+    def self.same_dir?(a : String, b : String) : Bool
+      resolve(a) == resolve(b)
+    end
+
+    private def self.resolve(path : String) : String
+      full = SessionManager.expand_directory(path)
+      (File.realpath(full) rescue full).rchop('/')
     end
 
     # Discover projects as a tree. A project is any directory containing a
-    # `.ai/` subdirectory, found within `depth` levels of a configured root;
-    # the scan goes on inside projects, so the projects below one are found
+    # `.ai/` subdirectory, found within `search_depth` levels of a search
+    # root; the scan goes on inside projects, so the projects below one are found
     # too. Returned in tree order (each project, then the projects below it,
     # by name), with names made unique for use as tmux window identifiers.
     def discover : Array(Project)
       found = Set(String).new
-      @roots.each do |root|
+      depth = search_depth
+      search_roots.each do |root|
         # A root is followed even if it's a link (the user named it), but
         # by its real path, so two roots reaching one place agree.
         dir = File.realpath(SessionManager.expand_directory(root)) rescue next
         next unless Dir.exists?(dir)
-        scan(dir, @depth, found)
+        scan(dir, depth, found)
       end
       tree(dedupe_names(found.map { |dir| {Config.agent_name(dir), dir} }))
     end
@@ -173,8 +214,8 @@ module Aix
         next if child.starts_with?(".")
         next if IGNORE_DIRS.includes?(child)
         path = File.join(dir, child)
-        next if File.symlink?(path)
-        next unless Dir.exists?(path)
+        # One lstat: a directory, and not a link to one.
+        next unless File.info?(path, follow_symlinks: false).try(&.directory?)
         scan(path, remaining - 1, found)
       end
     rescue

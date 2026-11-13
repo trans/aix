@@ -1,6 +1,7 @@
 require "json"
 require "./tmux"
 require "./harness"
+require "./runner"
 
 module Aix
   enum SessionState
@@ -42,11 +43,14 @@ module Aix
 
     # Start Claude Code in a tmux window. aix's bell tells it of mail
     # (`Bell`), or dot-ai's mail channel does when the config's `mail.channel` is on
-    # (`Harness.claude_args`).
+    # (`Harness.claude_args`). A session aix runs registers aix as a runner
+    # first, so dot-ai's carrier can find it (`Runner.register`).
     def start(args : Array(String) = [] of String)
       raise "Session '#{@name}' is already running" if running?
       claude_args = Harness.claude_args(args, @mail_channel)
-      Tmux.new_window(@name, @directory, claude_args, Harness.session_env(claude_args))
+      env = Harness.session_env(claude_args)
+      Runner.register if env["DOT_AI_BY"]? == Runner::NAME
+      Tmux.new_window(@name, @directory, claude_args, env)
       @started = true
       capture_claude_session_id
     end

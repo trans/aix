@@ -8,10 +8,9 @@ require "./aix/passthrough"
 require "./aix/web_app"
 require "./aix/control"
 require "./aix/mcp_server"
-require "./aix/arcana"
-require "./aix/bus_bridge"
 require "./aix/bell"
 require "./aix/mail_bell"
+require "./aix/runner"
 
 module Aix
   VERSION = "0.2.0"
@@ -32,9 +31,7 @@ module Aix
     end
 
     if ARGV.includes?("--bridge")
-      # Bus bridge: watch Arcana, wake tmux sessions on incoming mail.
-      Tmux.ensure_session
-      BusBridge.new.run
+      run_bridge
       return
     end
 
@@ -75,8 +72,9 @@ module Aix
     end
     window = tell_window(id)
     unless window
-      puts "#{id}: not open in aix"
-      return Bell::Result::NotOpen.exit_status
+      status, reason = Runner.not_in_pane(id)
+      puts "#{id}: #{reason}"
+      return status
     end
     result, reason = Bell.ring(window)
     puts "#{window}: #{result.to_s.downcase}, #{reason}"
@@ -95,11 +93,24 @@ module Aix
     0
   end
 
+  # `aix --bridge`: ring agents when mail reaches their inbox (`MailBell`),
+  # until dot-ai's carrier runs `aix tell` itself (Draft 0.5's runners).
+  def self.run_bridge
+    Tmux.ensure_session
+    bell = MailBell.new
+    unless bell.listen
+      STDERR.puts "[aix-bell] a bridge is already running (#{MailBell.socket_path}): not starting another"
+      exit 1
+    end
+    bell.run
+  end
+
   # The window for a session: a window by that name, or the one whose pane
-  # runs the Claude Code session with that id.
+  # runs the session with that id (Claude Code's own session files give its
+  # process; dot-ai's record gives it for other harnesses).
   private def self.tell_window(id : String) : String?
     return id if Tmux.window_exists?(id)
-    pid = Harness.claude_pid(id) || return nil
+    pid = Harness.claude_pid(id) || Runner.session_record(id).try(&.pid) || return nil
     parent = Harness.parent_pid(pid)
     Tmux.window_pids.find { |_name, pane_pid| pane_pid == pid || pane_pid == parent }.try(&.[0])
   end

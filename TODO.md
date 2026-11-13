@@ -1,41 +1,48 @@
 # AIX — TODO
 
-## Bus bridge (in progress)
+## Mail: the bell, and aix as dot-ai's runner
 
-- [x] Native Arcana HTTP client (`src/aix/arcana.cr`)
-- [x] Bridge: watch `message.sent` events → keystroke wake-up of the target
-      session; park on `@aix` mailbox for sub-agent reports (`src/aix/bus_bridge.cr`)
-- [ ] **Switch nudge trigger from polling to pub/sub push.** Contract LOCKED
-      with @arcana (2026-07-25); Arcana ships it as **arcana-core 0.13.0 +
-      arcana 0.27.0** (a `Bus after_send` hook → publish). Then on our side:
-      - Subscribe service `aix` to topic **`sys.message.sent`**.
-      - Long-poll `POST /receive` on `aix` (firehose copies land in aix's own
-        mailbox — confirmed distinct from `@aix`). Feed each envelope's
-        `recipient` straight into `maybe_nudge`. Replaces the `/events` poll.
-      - Payload: `{recipient, sender, ordering, correlation_id, subject,
-        timestamp}`.
-      - Gated server-side on `ARCANA_SYSTEM_TOPICS=1` (default OFF) — Thomas
-        flips it on and restarts Arcana; verify push, then delete the poll.
-      - Invariant (confirmed): one mailbox per address, competing consumers
-        race per-message — exactly ONE process may consume `aix`.
-      See `TODO(pubsub)` in `src/aix/bus_bridge.cr`.
-      Later: ask for `sys.listing.registered` (auto-map newly-joined agents).
-- [ ] Sub-agent launch config: bring agents up on the bus automatically —
-      register as `@<name>`, pre-approve Arcana MCP tools (no permission
-      prompts), inject the standing "report to @aix / check mail when nudged"
-      instruction. (Kills the manual register/approve steps.)
-- [x] Don't nudge a session that is mid-turn (busy): the bus nudge now goes
-      through the bell's guards (2026-11-11).
-- [ ] Gate nudges on discovered projects (not just any live window) once the
-      Leader/orchestrator wiring lands.
-- [ ] Surface/relay inbox messages to the Leader instead of just logging
-      (`TODO(leader)` in `bus_bridge.cr`).
+The Arcana bus bridge is gone (2026-11-12): with dot-ai's local carrier,
+Arcana refuses agent mail to dot-ai projects, and what it does deliver to
+one it also writes into the inbox, where the bell sees it. So nothing polls
+Arcana, and aix doesn't need it running.
+
+- [x] The mail bell (2026-11-11): aix types the fixed notice into an
+      agent's pane when it's idle at an empty prompt (`Bell`). `aix
+      --bridge` watches inboxes with inotify and rings, retrying while
+      held; `aix tell ID` rings once. dot-ai's Claude Code channel is the
+      fallback, with `"mail": {"channel": true}`.
+- [x] aix finds projects by dot-ai's search (user, 2026-11-12): git
+      config's `ai.path`, 4 levels, no links, no hidden directories or
+      `node_modules/`; adding or removing a root changes `ai.path`. aix's
+      own `roots` only without `ai.path`. The bell searches at its start
+      and on `aix update`; no timer searches.
+- [x] Draft 0.5's runner duties (dot.ai `c90cc8f`, 2026-11-12): aix
+      registers `~/.local/state/dot-ai/runners/aix` each time it starts a
+      session (`Runner`); `aix tell` finds a session's pane by its record's
+      pid too, answers 4 for one still running outside aix's panes (an
+      inherited `DOT_AI_BY`, or no pid to check), and 3 otherwise, marking
+      its own record `ended`.
+- [ ] Retire `aix --bridge` once dot-ai 0.10.0 (the reference that runs
+      `<runner> tell`) is installed in Claude Code and Codex. Check first
+      that the carrier runs `aix tell` on delivery.
+- [ ] Codex in aix: start `codex --no-daemon` with `DOT_AI_BY=aix`. Its
+      app server runs in the pane's process, and its hooks see the
+      variable (tested 2026-11-12). A plain `codex` uses the shared daemon
+      and gets the daemon's environment instead.
+- [ ] The bell for Codex: read the dot-ai record's `state` for idle (Codex
+      has no status file), then type the notice as for Claude Code. `codex
+      queue` may not reach a `--no-daemon` session.
+- [ ] Bell, untested live: the "user is typing in that pane" guard needs
+      an attached client.
+- [ ] Bell, once the sidebar shares windows: `Tmux.pane_info` takes a
+      window's first pane, which has to be the agent's.
 
 ## Leader-as-UI (the primary interface)
 
 Decided: the human tmux-attaches to the Leader harness (Claude Code) and
 drives everything via its aix-control MCP tools + natural language. No custom
-console. See memory `project_orchestrator`.
+console.
 
 - [x] Leader host = harness-as-Leader (Copious deferred).
 - [x] MetaConsole routing (step 3) — built, but SUPERSEDED as primary; kept
@@ -52,7 +59,7 @@ console. See memory `project_orchestrator`.
       indent. (Before, `~/Projects/.ai` hid every project under it.)
 - [x] Projects are named by their agent's Arcana handle (2026-10-10): the
       handle in `.ai/config.yml` without the `@`, or Arcana's fallback (the
-      directory name, lower-cased and dashed). So the bridge's `@name` →
+      directory name, lower-cased and dashed). So the bell's `@name` →
       window `name` mapping holds even when they differ: `~/ai` is `lead`,
       `infocomics` is `overlore`, `Projects` is `projects`.
 - [ ] Rebind F9 from config.leader on session (re)creation, so it survives a
@@ -77,31 +84,6 @@ console. See memory `project_orchestrator`.
 - [ ] Control tools for that: list the processes under an agent's pane
       with their memory use ("is it going to OOM?"), and kill one of them.
       `status` reports no resources, and `peek` only reads the screen.
-- [x] The mail bell (2026-11-11): aix types the fixed notice into an
-      agent's pane when it's idle at an empty prompt (`Bell`). `aix
-      --bridge` watches inboxes with inotify and rings, retrying while
-      held; `aix tell ID` rings once. dot-ai's Claude Code channel is the
-      fallback, with `"mail": {"channel": true}`.
-- [ ] Bell, untested live: the "user is typing in that pane" guard needs
-      an attached client. Codex panes: no status file to read yet, so the
-      bell holds for them.
-- [ ] `aix tell` for a session with `by=aix` that isn't in a pane (one an
-      aix session started, which inherited `DOT_AI_BY`): answer 4 while
-      its process lives, not 3 (told @tom, 2026-11-12).
-- [ ] Codex in aix: start `codex --no-daemon` with `DOT_AI_BY=aix`. Its
-      app server runs in the pane's process, and its hooks see the
-      variable (tested 2026-11-12). A plain `codex` uses the shared daemon
-      and gets the daemon's environment instead.
-- [ ] Bell, once the sidebar shares windows: `Tmux.pane_info` takes a
-      window's first pane, which has to be the agent's.
-- [x] The bell finds projects as dot-ai's carrier does (git config's
-      `ai.path`, 4 levels, no symbolic links), at the start and on `aix
-      update`, which reaches it over its socket (2026-11-11). No timer
-      searches.
-- [ ] aix's own project list still comes from `roots` (`~/Projects` one
-      level, `~/ai`), so the projects in `~/air`, `~/my` and inside
-      `siliconcircus.lol` can't be started from aix, and the bell has no
-      window to ring for them. Proposed: the list comes from `ai.path` too.
 
 ## Housekeeping
 

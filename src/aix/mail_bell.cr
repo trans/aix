@@ -88,12 +88,12 @@ module Aix
     end
 
     # Watch the inbox of every project dot-ai's carrier delivers to
-    # (`Config.mail_search`), and forget the ones no longer found. Projects
+    # (aix's own search, which is dot-ai's), and forget the ones no longer found. Projects
     # whose agents aren't running in aix are watched too; the bell finds no
     # window for them and does nothing. Returns what changed.
     private def watch_projects(inotify : Inotify) : String
       window_for = {} of String => String
-      Config.mail_search.discover.each do |project|
+      Config.load.discover.each do |project|
         inbox = File.join(project.directory, ".ai", "mail", "inbox")
         next unless Dir.exists?(inbox)
         window_for[inbox] = project.name if inotify.watching?(inbox) || inotify.watch(inbox)

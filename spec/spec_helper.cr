@@ -2,6 +2,14 @@ require "spec"
 require "file_utils"
 require "../src/aix"
 
+# Specs read no one's real git config: a project search would otherwise
+# follow the machine's `ai.path`. `with_git_config` gives one its own.
+EMPTY_GITCONFIG = File.tempname("aix-spec-gitconfig")
+File.write(EMPTY_GITCONFIG, "")
+ENV["GIT_CONFIG_GLOBAL"] = EMPTY_GITCONFIG
+ENV["GIT_CONFIG_NOSYSTEM"] = "1"
+at_exit { File.delete?(EMPTY_GITCONFIG) }
+
 # A fresh, empty directory for one example, removed afterwards.
 def with_tmpdir(&)
   dir = File.tempname("aix-spec")

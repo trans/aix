@@ -156,7 +156,7 @@ module Aix
     [
       {
         "name": "list_projects",
-        "description": "List all discovered AIX projects with their live state (running, cold, or stopped). A project is any directory containing a .ai/ folder under a configured root. Projects form a tree: each one's parent is the project whose directory contains it (the agent above it), or null at the top. A project's name is its agent's Arcana handle without the @.",
+        "description": "List all discovered AIX projects with their live state (running, cold, or stopped). A project is any directory containing a .ai/ folder, found as dot-ai finds them (git config's ai.path, 4 levels down). Projects form a tree: each one's parent is the project whose directory contains it (the agent above it), or null at the top. A project's name is its agent's Arcana handle without the @.",
         "inputSchema": { "type": "object", "properties": {} }
       },
       {
@@ -238,12 +238,12 @@ module Aix
       },
       {
         "name": "list_roots",
-        "description": "List the configured root paths (scanned for projects) and the scan depth.",
+        "description": "List the directories searched for projects, how many levels down, and where the list comes from: git config's ai.path (as dot-ai searches), or aix's own config without it.",
         "inputSchema": { "type": "object", "properties": {} }
       },
       {
         "name": "add_root",
-        "description": "Add a root path to scan for projects, then re-discover.",
+        "description": "Add a directory to search for projects (to git config's ai.path when aix follows it, so dot-ai searches it too), then re-discover.",
         "inputSchema": {
           "type": "object",
           "properties": { "path": { "type": "string", "description": "Directory path (may use ~)" } },
@@ -252,7 +252,7 @@ module Aix
       },
       {
         "name": "refresh",
-        "description": "Re-scan configured roots for projects (picks up newly created .ai/ directories).",
+        "description": "Search for projects again (picks up newly created .ai/ directories).",
         "inputSchema": { "type": "object", "properties": {} }
       }
     ]

@@ -118,27 +118,65 @@ def with_config(json : String, &)
   end
 end
 
-describe "Aix::Config.mail_search" do
-  it "searches git config's ai.path, as deep as dot-ai's carrier" do
+describe "Aix::Config's search" do
+  it "follows git config's ai.path, as deep as dot-ai, over aix's own roots" do
     with_tmpdir do |root|
       make_project(File.join(root, "my", "Projects", "air", "agpt"), "handle: agpt\n")
       make_project(File.join(root, "my", "a", "b", "c", "d", "too-deep"))
+      make_project(File.join(root, "mine", "only-in-aix-roots"))
       gitconfig = File.join(root, "gitconfig")
       File.write(gitconfig, "[ai]\n\tpath = #{File.join(root, "my")}\n\tpath = #{File.join(root, "gone")}\n")
       with_git_config(gitconfig) do
         Aix::Config.dot_ai_paths.should eq [File.join(root, "my"), File.join(root, "gone")]
-        Aix::Config.mail_search.discover.map(&.name).should eq ["agpt"]
+        config = Aix::Config.new([File.join(root, "mine")], depth: 1)
+        config.ai_path?.should be_true
+        config.search_depth.should eq 4
+        config.discover.map(&.name).should eq ["agpt"]
       end
     end
   end
 
-  it "falls back to aix's own roots without ai.path" do
+  it "searches what dot-ai searches: vendor/ and the like, not node_modules/ or hidden directories" do
     with_tmpdir do |root|
+      make_project(File.join(root, "app", "vendor", "lib"), "handle: lib\n")
+      make_project(File.join(root, "app", "node_modules", "dep"))
+      make_project(File.join(root, "app", ".cache", "hidden"))
       gitconfig = File.join(root, "gitconfig")
-      File.write(gitconfig, "")
+      File.write(gitconfig, "[ai]\n\tpath = #{root}\n")
       with_git_config(gitconfig) do
-        Aix::Config.dot_ai_paths.should be_empty
-        Aix::Config.mail_search.roots.should eq Aix::Config.load.roots
+        Aix::Config.new.discover.map(&.name).should eq ["lib"]
+      end
+    end
+  end
+
+  it "falls back to aix's own roots and depth without ai.path" do
+    with_tmpdir do |root|
+      make_project(File.join(root, "one"))
+      make_project(File.join(root, "one", "two", "three"))
+      config = Aix::Config.new([root], depth: 1)
+      config.ai_path?.should be_false
+      config.search_roots.should eq [root]
+      config.discover.map(&.name).should eq ["one"]
+    end
+  end
+
+  it "adds and removes roots in ai.path when it follows it" do
+    with_tmpdir do |root|
+      Dir.mkdir_p(File.join(root, "a"))
+      Dir.mkdir_p(File.join(root, "b"))
+      gitconfig = File.join(root, "gitconfig")
+      File.write(gitconfig, "[ai]\n\tpath = #{File.join(root, "a")}\n")
+      with_git_config(gitconfig) do
+        with_config(%({"roots": []})) do
+          config = Aix::Config.new
+          config.add_root(File.join(root, "a") + "/").should be_false
+          config.add_root(File.join(root, "b")).should be_true
+          Aix::Config.dot_ai_paths.should eq [File.join(root, "a"), File.join(root, "b")]
+          config.roots.should be_empty
+          config.remove_root(File.join(root, "a")).should be_true
+          Aix::Config.dot_ai_paths.should eq [File.join(root, "b")]
+          config.remove_root(File.join(root, "a")).should be_false
+        end
       end
     end
   end

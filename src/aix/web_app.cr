@@ -52,7 +52,7 @@ module Aix
     end
 
     get "/api/roots" do |env|
-      roots, depth = with_lock { {manager.config.roots, manager.config.depth} }
+      roots, depth = with_lock { {manager.config.search_roots, manager.config.search_depth} }
       json_response(env, {roots: roots, depth: depth})
     end
 
@@ -66,7 +66,7 @@ module Aix
 
       begin
         added = with_lock { manager.add_root(path) }
-        next json_response(env, {error: "Root '#{path}' is already configured"}, 422) unless added
+        next json_response(env, {error: "Root '#{path}' is already searched"}, 422) unless added
         json_response(env, {ok: true, count: with_lock { manager.sessions.size }}, 201)
       rescue ex
         json_response(env, {error: ex.message}, 422)
