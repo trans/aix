@@ -166,10 +166,14 @@ The Arcana half of `aix --bridge` is removed: it polled Arcana's
 `/events` every 750 ms to ring on bus messages, but under the local
 carrier Arcana refuses agent mail to dot-ai projects, and what it does
 deliver to one it also writes into the inbox, where the bell sees it. The
-planned `sys.message.sent` push is dropped with it. What's left of the
-bridge is the inbox bell. It goes too once dot-ai 0.10.0 (whose carrier
-runs `aix tell`) is installed: a held ring is answered 4, and the session
-hears at its next Stop or start, so nothing needs to run in the background.
+planned `sys.message.sent` push is dropped with it. What was left of the
+bridge, the inbox bell, went too (2026-11-13) once the carrier was seen
+running `aix tell`: @arcana tested with the user, both sessions in aix,
+both sending with 0.10.0, and each woke the other within a second of
+delivery, records `by=aix`
+(`mail/received/20261113-035045Z-@arcana--aix-tell-works-both-ways-cccaba8c.md`).
+A held ring is answered 4 (aix flashes a tmux message), and the session
+hears at its next Stop or start. Nothing of aix's runs in the background.
 
 ## Open
 

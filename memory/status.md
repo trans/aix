@@ -1,59 +1,42 @@
 # Status
 
-*Updated 2026-11-11*
+*Updated 2026-11-13*
 
 Where Aix stands. The backlog, item by item, is `TODO.md` in the code repo;
 this note is the handoff, not a copy of it.
 
-## Committed
+## On main, pushed
 
-Last code commit before `.ai/` was set up: `d457742` (2026-07-26). Built and
-on `main`: the tmux multiplexer, TUI / REPL / web / MCP / bridge modes,
-discovery of projects by `.ai/`, the Control API and MCP server (`f091df0`),
-the bus bridge (`c727357`, registered as the `aix` service in `bab1d04`),
-the meta console's Leader routing (`d596a95`), and the `focus` /
-`set_leader` tools with the F9 return-to-Leader keybind (`7b41a71`).
+Last tag: `v0.2.0` (2026-04-15). Since then:
 
-## Committed 2026-11-11
+- Control API and MCP server (`f091df0`), the meta console's Leader
+  routing (`d596a95`), `focus` / `set_leader` and the F9 return-to-Leader
+  key (`7b41a71`).
+- Discovery as a tree of responsibility, projects named by their agent's
+  handle (`e21b623`), then by dot-ai's search: git config `ai.path`, 4
+  levels (`5c0f903`, `423785f`).
+- The mail bell and `aix tell` (`5ef8b34`); aix as dot-ai's runner under
+  Draft 0.5 (`5c0f903`, `runner.md`).
+- `4053108` (2026-11-13): the TUI's screen preview (`Screens`); quitting
+  the TUI leaves agents running; exited windows stay (`remain-on-exit`,
+  respawned in place), after the user's report of opening onboard and
+  landing in arcana's window; resume falls back from the session's
+  transcript to `--continue` to a new conversation; `aix --bridge`, `aix
+  update` and the inotify watcher retired. 51 specs pass.
 
-- `e21b623`: discovery as a tree of responsibility, with projects named
-  by their agent's handle (the work `TODO.md` dates 2026-10-10). It
-  type-checks (`crystal build --no-codegen src/aix.cr`), but hasn't been
-  run against a live tmux session since.
-- `7ab2062`: a real README, and `TODO.md` updated with the 2026-11-11
-  decisions (`decisions.md`, `runner.md`).
-
-## Not yet committed (2026-11-11)
-
-- `crystal spec` runs: `Aix.run` moved to `src/main.cr` (`shard.yml`'s
-  main). 35 specs cover discovery, naming, config, the harness, the bell
-  and inotify.
-- The mail bell (`decisions.md`, "The mail bell"): `src/aix/bell.cr`,
-  `mail_bell.cr`, `inotify.cr`, `harness.cr`, and `aix tell`. Tested live
-  in a throwaway Claude Code window: it rings an idle session, holds for a
-  draft (leaving it alone), and gives exit 3 for an unknown window. It also
-  finds a session by Claude session id, rings on delivery through the
-  bridge, retries after a draft is cleared, and drops the ring once the
-  mail is filed.
+Tested live: the bell and `aix tell` (@arcana and @chantest, both in aix,
+woke each other). The preview and exited windows were tested in a separate
+tmux server with a fake `claude`, not yet in the user's own session.
 
 ## Next
 
-From `TODO.md`, roughly in order, plus the runner work decided on
-2026-11-11 (`runner.md`: session records, `DOT_AI_BY`, `aix tell`, the
-push glue), which `TODO.md` doesn't list yet:
+From `TODO.md`:
 
-1. **Open:** move the bridge's nudge from polling `/events` to push. The
-   firehose is changing on Arcana's side (see `coordination.md`), so wait
-   for that before writing it. For mail, `aix tell` replaces the nudge
-   (`runner.md`), so only bus traffic that isn't mail might still need it.
-2. **Open:** a launch config that brings agents up on the bus already
-   registered, with tools pre-approved and the reporting instruction.
-   First find out what the session hooks already handle. They now
-   register each project as `@handle`. If Arcana's tools are also
-   pre-approved globally, little is left to do. If not, `start` passes
-   `--allowed-tools mcp__arcana__*`.
-3. **Open:** don't nudge a busy (mid-turn) session.
-4. **Open:** rebind F9 from `config.leader` whenever the session is
-   created again.
-5. **Open:** housekeeping. Guard the `Aix.run` entry point so
-   `crystal spec` can run, and replace the boilerplate README.
+1. Codex in aix: `codex --no-daemon` with `DOT_AI_BY=aix`, and the bell
+   for Codex from the dot-ai record's `state`.
+2. The preview: colour, and the list's ●/○ refreshed while the TUI is
+   open. The Resume box may belong to the selected project.
+3. The lead's tools: processes under an agent's pane with their memory
+   use, and killing one.
+4. Rebind F9 from `config.leader` whenever the session is created again.
+5. The sidebar file browser.
