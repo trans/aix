@@ -145,8 +145,15 @@ minutes ("another poll?"), and then a per-project `aix add` for one
 command that searches again ("I may have over thought it"). The carrier never makes an
 inbox, so a new one appears only when a project is set up. The socket
 also keeps the bridge to one: a second finds the first and won't start.
-The user's layout is still moving (`~/air` likely goes under `~/my`), so
-nothing in aix names those folders. **Lesson:** Crystal's `IO::FileDescriptor.new`
+The user's layout is still moving, so nothing in aix names those folders.
+
+**aix's own project list is dot-ai's search too (user, 2026-11-12):** "By
+the dot-ai spec. It should look for .ai/config.yml at least four layers
+deep for now." So the TUI, web, console and MCP lists come from `ai.path`,
+4 levels down, ignoring only hidden directories and `node_modules/`, as
+dot-ai's reference does. A project is any directory with `.ai/`, as the
+spec says, `config.yml` or not. Adding or removing a root changes
+`ai.path`; aix's `roots` are only the fallback without it. **Lesson:** Crystal's `IO::FileDescriptor.new`
 switches an fd that isn't a pipe or socket back to blocking mode, and a
 blocking inotify read stalls every fiber. `set_blocking(fd, false)` after
 wrapping it fixes that, and a spec now hangs if it regresses.

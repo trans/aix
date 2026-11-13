@@ -138,12 +138,41 @@ not failed, otherwise). Draft 0.5 takes aix's line: a runner asked about a
 session it can't push to, but that's still running, answers 4. If claims
 had been needed, the user chose aix's claim file.
 
+**Draft 0.5 written** (@tom, 2026-11-12, dot.ai `c90cc8f`, reference
+plugin 0.10.0 in `d6b6594`; neither pushed, the user says when;
+`mail/received/20261112-062120Z-@tom--draft-0-5-written-e00b3fcc.md`). No
+default runner; a runner starts Codex as `codex --no-daemon`, and a plain
+`codex` is the carrier's; inherited `DOT_AI_BY` gets 4 while open; runners
+register `runners/<name>` (one line, an absolute path; the carrier checks
+that the folder, the file and the program are the person's, or root's for
+the program, and that nobody else can write them); a missing or failed
+registration counts as 4; `ai.runner` is gone. aix's reply
+(`mail/sent/20261112-083411Z-@tom--draft-0.5-fine-for-aix-one-codex-caveat.md`):
+fine for aix. One caveat: `codex queue` may only reach sessions on the
+daemon, so aix would push to a `--no-daemon` Codex by typing into its
+pane, reading the record's `state` for idle (untested).
+
+**Built (2026-11-12, user: "yes"):** aix registers
+`~/.local/state/dot-ai/runners/aix` (its absolute path) each time it starts
+a session with `DOT_AI_BY=aix` (`src/aix/runner.cr`). `aix tell` finds a
+pane by Claude Code's session files or the record's `pid`. For a session
+in no aix pane it answers 4 while the record's process lives (or when the
+record has no `pid`), and 3 otherwise, marking its own (`by=aix`) record
+`ended`.
+
+## The bridge (user, 2026-11-12)
+
+The Arcana half of `aix --bridge` is removed: it polled Arcana's
+`/events` every 750 ms to ring on bus messages, but under the local
+carrier Arcana refuses agent mail to dot-ai projects, and what it does
+deliver to one it also writes into the inbox, where the bell sees it. The
+planned `sys.message.sent` push is dropped with it. What's left of the
+bridge is the inbox bell. It goes too once dot-ai 0.10.0 (whose carrier
+runs `aix tell`) is installed: a held ring is answered 4, and the session
+hears at its next Stop or start, so nothing needs to run in the background.
+
 ## Open
 
-- The bus bridge: for mail, `aix tell` replaces its keystroke nudge on
-  Arcana's `message.sent`. What's left for the bridge is bus traffic
-  that isn't mail. Whether that still needs the `sys.message.sent` push
-  (`TODO.md`, `coordination.md`) is undecided.
 - **What `wake` looks like.** One input is "turns on demand", an idea of
   the user's that's **being weighed, not decided** (via @arcana and @tom,
   2026-11-11). When there's work for a project, resume its saved session
