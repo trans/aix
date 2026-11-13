@@ -9,7 +9,6 @@ require "./aix/web_app"
 require "./aix/control"
 require "./aix/mcp_server"
 require "./aix/bell"
-require "./aix/mail_bell"
 require "./aix/runner"
 
 module Aix
@@ -20,18 +19,9 @@ module Aix
       exit tell(ARGV[1]?)
     end
 
-    if ARGV.first? == "update"
-      exit update
-    end
-
     if ARGV.includes?("--mcp")
       # MCP stdio server: stdout is reserved for protocol messages only.
       MCPServer.new.run
-      return
-    end
-
-    if ARGV.includes?("--bridge")
-      run_bridge
       return
     end
 
@@ -54,10 +44,12 @@ module Aix
       run_tui(manager, passthrough)
     end
 
-    # Cleanup
-    manager.stop_all
-    Tmux.kill_session if manager.sessions.all? { |s| !s.running? }
-    puts "Goodbye."
+    # Quitting leaves the agents running in tmux: they get on without the
+    # TUI, and `aix` picks them up again. Stop one with `d`. The session
+    # goes only when nothing is left in it.
+    running = manager.sessions.count(&.running?)
+    Tmux.kill_session if running == 0
+    puts running == 0 ? "Goodbye." : "Goodbye. #{running} agent(s) still running; `aix` picks them up again."
   end
 
   # `aix tell ID`: ring the bell for one session, by its window name or its
@@ -67,7 +59,7 @@ module Aix
   # 4 can't be told now.
   def self.tell(id : String?) : Int32
     unless id
-      STDERR.puts "usage: aix tell <window | Claude Code session id>"
+      STDERR.puts "usage: aix tell <window | session id>"
       return 2
     end
     window = tell_window(id)
@@ -78,31 +70,10 @@ module Aix
     end
     result, reason = Bell.ring(window)
     puts "#{window}: #{result.to_s.downcase}, #{reason}"
+    # Held: the session hears at its next Stop or start. Let the user know
+    # meanwhile, since it's usually them it waits on.
+    Tmux.display_message("aix: mail for @#{window} (#{reason})") if result.held?
     result.exit_status
-  end
-
-  # `aix update`: have the running bridge's bell search for projects
-  # again, so it watches the inboxes of projects set up since it started
-  # and forgets those gone. The bell searches only at its start and on this.
-  def self.update : Int32
-    if reply = MailBell.request("update")
-      puts reply
-    else
-      puts "no bridge is running: `aix --bridge` searches when it starts"
-    end
-    0
-  end
-
-  # `aix --bridge`: ring agents when mail reaches their inbox (`MailBell`),
-  # until dot-ai's carrier runs `aix tell` itself (Draft 0.5's runners).
-  def self.run_bridge
-    Tmux.ensure_session
-    bell = MailBell.new
-    unless bell.listen
-      STDERR.puts "[aix-bell] a bridge is already running (#{MailBell.socket_path}): not starting another"
-      exit 1
-    end
-    bell.run
   end
 
   # The window for a session: a window by that name, or the one whose pane

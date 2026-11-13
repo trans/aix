@@ -108,6 +108,29 @@ module Aix
       end
     end
 
+    # Claude Code's arguments to resume a project's conversation: the one
+    # with id `session_id` if its transcript is there, else the folder's
+    # latest (`--continue`) if it has any, else none, a fresh start.
+    # `--continue` with nothing to continue makes Claude Code exit at once.
+    def self.resume_args(directory : String, session_id : String?,
+                         config_dir : String = claude_config_dir) : Array(String)
+      transcripts = File.join(config_dir, "projects", project_key(directory))
+      if session_id && File.exists?(File.join(transcripts, "#{session_id}.jsonl"))
+        ["--resume", session_id]
+      elsif !Dir.glob(File.join(transcripts, "*.jsonl")).empty?
+        ["--continue"]
+      else
+        [] of String
+      end
+    end
+
+    # The folder Claude Code keeps a project's transcripts in, under
+    # `projects/`: its path with each character other than a letter, digit
+    # or `-` made a `-` (`/home/me/x.y` is `-home-me-x-y`).
+    def self.project_key(directory : String) : String
+      directory.gsub(/[^A-Za-z0-9\-]/, "-")
+    end
+
     # A process's parent, from `/proc/<pid>/stat` (Linux).
     def self.parent_pid(pid : Int64) : Int64?
       stat = File.read("/proc/#{pid}/stat")

@@ -1,4 +1,5 @@
 require "./tmux"
+require "./screens"
 
 module Aix
   class Passthrough
@@ -7,7 +8,9 @@ module Aix
       Tmux.select_window(session.name)
       Tmux.attach
 
-      # If we get here, the user detached
+      # If we get here, the user detached. Keep the screen they left (or
+      # the last one, if its agent exited), for the TUI's preview.
+      Screens.capture(session.name)
       if session.running?
         :escape
       else

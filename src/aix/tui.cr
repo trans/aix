@@ -1,5 +1,6 @@
 require "crt"
 require "./session_manager"
+require "./screens"
 
 module Aix
   class TUI
@@ -52,20 +53,21 @@ module Aix
           valign: CRT::Ansi::VAlign::Top,
           pad: 1)
 
+        # The selected project, then its agent's screen: live if it's
+        # running, else as it was when aix last saw it (`Screens`).
+        screen_w = detail_w - 4 # border and padding
+        screen_h = detail_h - 6 # border, padding, the title and a blank line
         update_detail = ->(index : Int32) {
           session = @manager.sessions[index]?
           if session
-            state_text = case session.state
-                         when SessionState::Running then "Running"
-                         when SessionState::Cold    then "Not started"
-                         else                            "Stopped"
-                         end
-            above = session.parent ? "Above:     #{session.parent}\n" : ""
-            detail.text = "#{session.name}\n\n" \
-                          "Directory: #{session.directory}\n" \
-                          "#{above}" \
-                          "Status:    #{state_text}\n\n" \
-                          "Enter to open, Tab to navigate"
+            running = session.running?
+            state_text = running ? "running" : "not running"
+            where = session.directory.sub(/\A#{Regex.escape(Path.home.to_s)}/, "~")
+            above = session.parent ? "  ·  below #{session.parent}" : ""
+            title = Screens.fit("#{session.name}  ·  #{state_text}  ·  #{where}#{above}", screen_w, 1)
+            shown = Screens.preview(session.name, screen_w, screen_h)
+            shown ||= running ? "(its screen can't be read)" : "No screen saved yet: Enter starts its agent."
+            detail.text = "#{title}\n\n#{shown}"
           else
             detail.text = ""
           end
@@ -75,7 +77,7 @@ module Aix
         # -- Footer bar --
         footer_y = sh - 1
         CRT::Label.new(screen, x: 0, y: footer_y, width: sw, height: 1,
-          text: " Enter:Open  a:Add Root  d:Stop  q:Quit", style: CRT.theme.field)
+          text: " Enter:Open  Tab:Resume box  a:Add Root  d:Stop  q:Quit", style: CRT.theme.field)
 
         # -- Sync resume checkbox with session state --
         sync_resume = ->(index : Int32) {
@@ -110,15 +112,7 @@ module Aix
           if session
             @manager.switch(session.name)
             unless session.running?
-              args = if resume_cb.checked?
-                       if id = session.claude_session_id
-                         ["--resume", id]
-                       else
-                         ["--continue"]
-                       end
-                     else
-                       [] of String
-                     end
+              args = resume_cb.checked? ? Harness.resume_args(session.directory, session.claude_session_id) : [] of String
               session.start(args)
               @manager.persist_sessions
             end

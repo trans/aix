@@ -134,8 +134,8 @@ module Aix
       File.join(ENV["XDG_RUNTIME_DIR"]? || Dir.tempdir, "aix")
     end
 
-    # When each window was last rung, kept in a file per window so `aix
-    # tell` and the bridge, separate processes, don't both ring at once.
+    # When each window was last rung, kept in a file per window so two
+    # `aix tell`s, separate processes, don't both ring at once.
     private def self.stamp(window : String) : String
       File.join(runtime_dir, "rung", window)
     end

@@ -39,12 +39,23 @@ tmux window `name` match.
 | `aix --repl` | A line-based console with the same controls |
 | `aix --web` | A web dashboard (`--host`, `--port`; default `127.0.0.1:9292`) |
 | `aix --mcp` | The control tools over MCP (stdio), for the lead |
-| `aix --bridge` | The bell: rings agents when mail reaches their inbox, until dot-ai's carrier does it through `aix tell` |
 | `aix tell ID` | Ring one agent's bell now, by window name or session id (what dot-ai's carrier runs) |
-| `aix update` | Have the running bell search for projects again, for any set up since it started |
 
 All modes share one tmux session, `aix`. `F12` detaches, and `F9` jumps
 back to the lead's window.
+
+In the TUI, the right side shows the selected project's screen as you move
+through the list: live for an agent that's running, and otherwise as it
+was when aix last saw it (when you left it, or when it was stopped). The
+screens are kept in `~/.local/state/aix/screens/`. Quitting the TUI (`q`)
+leaves the agents running in tmux, and `aix` picks them up again; `d`
+stops one.
+
+When an agent's harness exits (or fails to start), its window stays,
+showing its last screen and a line saying it exited, rather than tmux
+moving you to another agent's window. `F12` takes you back to the TUI,
+where `Enter` starts it again. With the Resume box ticked, aix resumes the
+project's last conversation, or starts a new one if it has none.
 
 To give the lead aix's control tools in Claude Code:
 
@@ -63,13 +74,10 @@ when mail comes the way you would: it types `You have mail in
 .ai/mail/inbox/.` into the agent's pane. The agent then reads the mail
 itself. The notice never carries a message's text.
 
-`aix --bridge` watches the `.ai/mail/inbox/` of every project aix finds
-(with inotify, on Linux) and rings the project's window when a message
-lands. It searches when it starts, and again on `aix update` (after setting up a
-project, say); no timer searches. Only one bridge runs at a time; a
-second finds the first's socket and doesn't start. Typing
-into a pane is only safe at an empty prompt, so the bell rings only when
-all of these hold:
+dot-ai's carrier rings the bell itself: when it delivers mail to a project
+whose agent aix runs, it runs `aix tell` (below), so nothing of aix's runs
+in the background. Typing into a pane is only safe at an empty prompt, so
+the bell rings only when all of these hold:
 
 - Claude Code's session file says the session is idle. A busy session is
   told by dot-ai's end-of-turn hook instead. During a startup dialog
@@ -78,9 +86,9 @@ all of these hold:
 - The cursor is in Claude Code's input box, and the box is empty. A draft
   of yours is never touched.
 
-When ringing has to wait, the bridge tries again every few seconds, until
-the mail has been read or the window is gone, and flashes a tmux message
-meanwhile.
+When ringing has to wait, aix flashes a tmux message (`aix: mail for
+@name`), and the agent hears at the end of its next turn or when it
+starts, from dot-ai's own hooks.
 
 ### aix as dot-ai's runner
 
@@ -98,9 +106,8 @@ sessions it starts, and dot-ai's carrier tells it of their mail:
   an aix pane but is still running (one started from inside an aix
   session) gets 4.
 
-A carrier that does this needs dot-ai 0.10.0. Then `aix --bridge` isn't
-needed: a ring that has to wait is answered 4, and the session hears at
-the end of its next turn or when it starts.
+This needs dot-ai 0.10.0 or later, in the session sending the mail as well
+as the one receiving it.
 
 The fallback is dot-ai's Claude Code channel. With `"mail": {"channel": true}`
 in `config.json`, and the dot-ai plugin installed, aix starts Claude Code
@@ -126,8 +133,7 @@ is in `pkg/`.
 
 Early, and changing. Work in progress is listed in `TODO.md`. Next:
 starting Codex agents (`codex --no-daemon`, so their hooks see
-`DOT_AI_BY`), and retiring `aix --bridge` once dot-ai's carrier runs
-`aix tell`.
+`DOT_AI_BY`).
 
 ## License
 

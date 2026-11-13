@@ -172,7 +172,7 @@ module Aix
     # `handle` in `.ai/config.yml` (or `arcana.handle`, where it was kept
     # before dot-ai moved it to the top), or else Arcana's own fallback, the
     # directory name in lower case with anything outside a-z, 0-9 and `-`
-    # made a dash. The bus bridge wakes `@name` by its window `name`.
+    # made a dash. The bell finds `@name`'s agent by its window `name`.
     def self.agent_name(dir : String) : String
       configured_handle(dir).try(&.lchop('@')) || fallback_name(dir)
     end

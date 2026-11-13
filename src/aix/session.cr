@@ -2,6 +2,7 @@ require "json"
 require "./tmux"
 require "./harness"
 require "./runner"
+require "./screens"
 
 module Aix
   enum SessionState
@@ -83,9 +84,12 @@ module Aix
       @claude_session_id = best_id if best_id
     end
 
-    # Stop the session by killing the tmux window.
+    # Stop the session by killing the tmux window, keeping its last screen
+    # for the TUI's preview first.
     def stop
-      Tmux.kill_window(@name) if running?
+      return unless running? || Tmux.window_dead?(@name)
+      Screens.capture(@name)
+      Tmux.kill_window(@name)
     end
 
     @started = false

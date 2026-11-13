@@ -90,3 +90,27 @@ describe Aix::Harness do
     end
   end
 end
+
+describe "Aix::Harness.resume_args" do
+  it "names Claude Code's transcript folder as Claude Code does" do
+    Aix::Harness.project_key("/home/me/Projects/onboard").should eq "-home-me-Projects-onboard"
+    Aix::Harness.project_key("/home/me/.cache/x.y_z").should eq "-home-me--cache-x-y-z"
+  end
+
+  it "resumes the saved conversation, else the folder's latest, else starts fresh" do
+    with_tmpdir do |config|
+      dir = "/home/me/Projects/onboard"
+      transcripts = File.join(config, "projects", Aix::Harness.project_key(dir))
+      Aix::Harness.resume_args(dir, "abc", config).should eq [] of String
+      Aix::Harness.resume_args(dir, nil, config).should eq [] of String
+
+      Dir.mkdir_p(transcripts)
+      File.write(File.join(transcripts, "old.jsonl"), "")
+      Aix::Harness.resume_args(dir, "abc", config).should eq ["--continue"]
+      Aix::Harness.resume_args(dir, nil, config).should eq ["--continue"]
+
+      File.write(File.join(transcripts, "abc.jsonl"), "")
+      Aix::Harness.resume_args(dir, "abc", config).should eq ["--resume", "abc"]
+    end
+  end
+end

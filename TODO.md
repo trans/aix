@@ -2,30 +2,30 @@
 
 ## Mail: the bell, and aix as dot-ai's runner
 
-The Arcana bus bridge is gone (2026-11-12): with dot-ai's local carrier,
-Arcana refuses agent mail to dot-ai projects, and what it does deliver to
-one it also writes into the inbox, where the bell sees it. So nothing polls
-Arcana, and aix doesn't need it running.
+`aix --bridge` is gone (2026-11-13). Its Arcana half went first: under
+dot-ai's local carrier, Arcana refuses agent mail to dot-ai projects. Its
+inbox watcher went once dot-ai 0.10.0's carrier ran `aix tell` on delivery
+(@arcana's test with the user, 2026-11-13: each of @arcana and @chantest,
+both in aix, woke the other within a second). Nothing of aix's runs in the
+background for mail.
 
 - [x] The mail bell (2026-11-11): aix types the fixed notice into an
-      agent's pane when it's idle at an empty prompt (`Bell`). `aix
-      --bridge` watches inboxes with inotify and rings, retrying while
-      held; `aix tell ID` rings once. dot-ai's Claude Code channel is the
-      fallback, with `"mail": {"channel": true}`.
+      agent's pane when it's idle at an empty prompt (`Bell`); `aix tell
+      ID` rings once, and flashes a message when it has to wait. dot-ai's
+      Claude Code channel is the fallback, with `"mail": {"channel":
+      true}`.
 - [x] aix finds projects by dot-ai's search (user, 2026-11-12): git
       config's `ai.path`, 4 levels, no links, no hidden directories or
       `node_modules/`; adding or removing a root changes `ai.path`. aix's
-      own `roots` only without `ai.path`. The bell searches at its start
-      and on `aix update`; no timer searches.
+      own `roots` only without `ai.path`.
 - [x] Draft 0.5's runner duties (dot.ai `c90cc8f`, 2026-11-12): aix
       registers `~/.local/state/dot-ai/runners/aix` each time it starts a
       session (`Runner`); `aix tell` finds a session's pane by its record's
       pid too, answers 4 for one still running outside aix's panes (an
       inherited `DOT_AI_BY`, or no pid to check), and 3 otherwise, marking
       its own record `ended`.
-- [ ] Retire `aix --bridge` once dot-ai 0.10.0 (the reference that runs
-      `<runner> tell`) is installed in Claude Code and Codex. Check first
-      that the carrier runs `aix tell` on delivery.
+- [x] Retired `aix --bridge`, `aix update` and the inotify watcher
+      (2026-11-13), once the carrier was seen running `aix tell`.
 - [ ] Codex in aix: start `codex --no-daemon` with `DOT_AI_BY=aix`. Its
       app server runs in the pane's process, and its hooks see the
       variable (tested 2026-11-12). A plain `codex` uses the shared daemon
@@ -67,11 +67,21 @@ console.
 - [ ] Keybinds: return-to-Leader (F9, done), detach, quit. Tentative rule:
       exit-to-shell only from the console/top-level, not from inside an agent
       pane.
-- [ ] Sidebar (user, 2026-11-11): the crt UI as a narrow tmux pane beside
-      the agent's pane, in place of a full-screen attach. On a switch,
-      `join-pane` the sidebar into the agent's window, so agents keep
-      their windows and names. Target agent panes by id (`%N`), not
-      `aix:name`, once windows have two panes.
+- [x] The list with a screen beside it (user, 2026-11-12, in place of the
+      join-pane sidebar of 2026-11-11): the TUI's right side shows the
+      selected project's screen, live if its agent runs, else as aix last
+      saw it (`Screens`, saved on leaving an agent and on stopping one).
+- [x] An exited harness keeps its window (user's report, 2026-11-12:
+      opening onboard showed "Stopped" and landed in arcana's window).
+      Windows get `remain-on-exit`, so the error stays on screen, and
+      opening it again restarts it in the same window. Resume uses the
+      session id's transcript, else `--continue`, else a new conversation.
+- [ ] The preview, next: colour (`capture-pane -e` and a parser for crt);
+      the list's running marks (●/○) refreshed while the TUI is open.
+- [ ] The Resume box stays ticked from one project to the next; it may
+      belong to the selected project instead.
+- [x] Quitting the TUI leaves agents running (2026-11-12); it used to stop
+      them all.
 - [ ] Sidebar file browser (user, 2026-11-11): get to the files agents
       mention without navigating, since CLI links often don't work. Open
       with `xdg-open`. List the files the agent touched first (from the
