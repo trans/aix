@@ -52,19 +52,20 @@ module Aix
 
     # Start the AI harness in a project's tmux window: `harness` (`claude`
     # or `codex`) if given, kept as the project's choice, else the
-    # project's own. With `resume`, its last conversation, unless that's
-    # open in another program.
+    # project's own. In its last conversation (or a new one where there's
+    # none), as Enter in the TUI, unless that's open in another program;
+    # with `resume` false, or `args` that resume one themselves, as told.
     def start(name : String, args : Array(String) = [] of String, harness : String? = nil,
-              resume : Bool = false)
+              resume : Bool = true)
       @manager.refresh
       if harness
         kind = Harness::Kind.parse?(harness) || raise "No harness '#{harness}': claude or codex"
         @manager.set_harness(name, kind)
       end
-      if resume
-        project = require_session(name)
+      project = require_session(name)
+      if resume && !Harness.resumes?(project.harness, args)
         if refusal = project.resume_refusal
-          raise "Not resumed: #{refusal}"
+          raise "Not resumed: #{refusal} Or pass resume: false for a new conversation."
         end
         args = project.resume_args + args
       end

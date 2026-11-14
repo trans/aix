@@ -151,6 +151,17 @@ module Aix
       kind.codex? ? ["resume", "--last"] : resume_args(directory, session_id)
     end
 
+    # Whether arguments for harness `kind` already resume a conversation:
+    # Claude Code's `--resume` or `--continue`, Codex's `resume` (or `fork`)
+    # subcommand. (Codex's `-c` sets a config value.)
+    def self.resumes?(kind : Kind, args : Array(String)) : Bool
+      if kind.codex?
+        {"resume", "fork"}.includes?(args.first?)
+      else
+        args.any? { |arg| {"--resume", "-r", "--continue", "-c"}.includes?(arg) || arg.starts_with?("--resume=") }
+      end
+    end
+
     # Claude Code's arguments to resume a project's conversation: the one
     # with id `session_id` if its transcript is there, else the folder's
     # latest (`--continue`) if it has any, else none, a fresh start.

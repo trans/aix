@@ -100,7 +100,8 @@ console.
       the list's running marks (●/○) refreshed while the TUI is open.
 - [x] No Resume box (user, 2026-11-14): `Enter` resumes the last
       conversation (or starts one), `n` starts a new one. The box stayed
-      ticked from one project to the next.
+      ticked from one project to the next. The web dashboard (Start,
+      New) and the lead's `start` (`resume`, default true) too.
 - [x] Quitting the TUI leaves agents running (2026-11-12); it used to stop
       them all.
 - [ ] Sidebar file browser (user, 2026-11-11): get to the files agents

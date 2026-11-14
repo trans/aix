@@ -57,6 +57,16 @@ describe Aix::Harness do
     end
   end
 
+  describe ".resumes?" do
+    it "sees arguments that already resume a conversation" do
+      Aix::Harness.resumes?(Aix::Harness::Kind::Claude, ["--continue"]).should be_true
+      Aix::Harness.resumes?(Aix::Harness::Kind::Claude, ["--resume=abc"]).should be_true
+      Aix::Harness.resumes?(Aix::Harness::Kind::Claude, ["--model", "opus"]).should be_false
+      Aix::Harness.resumes?(Aix::Harness::Kind::Codex, ["resume", "--last"]).should be_true
+      Aix::Harness.resumes?(Aix::Harness::Kind::Codex, ["-c", "model=o3"]).should be_false
+    end
+  end
+
   describe ".resume_args for Codex" do
     it "resumes the directory's newest conversation, which starts one where there's none" do
       Aix::Harness.resume_args(Aix::Harness::Kind::Codex, "/x", "some-id").should eq ["resume", "--last"]

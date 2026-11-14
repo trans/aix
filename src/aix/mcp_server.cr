@@ -101,7 +101,7 @@ module Aix
         @control.status(arg_string(args, "name")).to_json
       when "start"
         @control.start(arg_string(args, "name"), arg_string_array(args, "args"),
-          args["harness"]?.try(&.as_s?), args["resume"]?.try(&.as_bool?) || false).to_json
+          args["harness"]?.try(&.as_s?), args["resume"]?.try(&.as_bool?) != false).to_json
       when "stop"
         @control.stop(arg_string(args, "name")).to_json
       when "send"
@@ -171,14 +171,14 @@ module Aix
       },
       {
         "name": "start",
-        "description": "Start the project's AI harness (Claude Code or Codex) in its tmux window. Fails if it is already running.",
+        "description": "Start the project's AI harness (Claude Code or Codex) in its tmux window, in its last conversation (a new one where there's none) unless resume is false. Fails if it is already running, or if that conversation is open in another program (status lists open_elsewhere).",
         "inputSchema": {
           "type": "object",
           "properties": {
             "name": { "type": "string", "description": "Project name" },
             "args": { "type": "array", "items": { "type": "string" }, "description": "Optional extra args passed to the harness" },
             "harness": { "type": "string", "enum": ["claude", "codex"], "description": "Optional: run this harness, and keep it as the project's choice. Default: the project's (status reports it)" },
-            "resume": { "type": "boolean", "description": "Optional: resume the project's last conversation. Refused while that conversation is open in another program (status lists open_elsewhere)" }
+            "resume": { "type": "boolean", "description": "Optional, default true: resume the project's last conversation. false starts a new one, for a task that doesn't need what came before" }
           },
           "required": ["name"]
         }

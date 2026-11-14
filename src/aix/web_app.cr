@@ -89,7 +89,9 @@ module Aix
     post "/api/sessions/:name/start" do |env|
       name = env.params.url["name"]
       payload = request_payload(env)
-      resume = payload["resume"]?.try(&.as_bool?) || false
+      # Its last conversation unless told otherwise (`"resume": false`),
+      # as Enter in the TUI.
+      resume = payload["resume"]?.try(&.as_bool?) != false
 
       begin
         session = with_lock do
@@ -97,7 +99,7 @@ module Aix
           raise "No session named '#{name}'" unless existing
           unless existing.running?
             if resume && (refusal = existing.resume_refusal)
-              raise "Not resumed: #{refusal}"
+              raise "Not resumed: #{refusal} Or start a new conversation (New)."
             end
             args = resume ? existing.resume_args : [] of String
             manager.start(name, args)
@@ -513,8 +515,8 @@ module Aix
                   <pre>${preview}</pre>
                   <div class="actions">
                     <button type="button" data-action="open" data-name="${name}">Open</button>
-                    <button type="button" data-action="start" data-name="${name}">Start</button>
-                    <button type="button" data-action="resume" data-name="${name}">Resume</button>
+                    <button type="button" data-action="start" data-name="${name}" title="Its last conversation, or a new one where there's none">Start</button>
+                    <button type="button" data-action="new" data-name="${name}" title="A new conversation">New</button>
                     <button type="button" data-action="stop" data-name="${name}">Stop</button>
                   </div>
                 </article>
@@ -600,8 +602,8 @@ module Aix
               const action = button.dataset.action;
               const name = button.dataset.name;
               try {
-                if (action === "resume") {
-                  await sessionAction(name, "start", { resume: true });
+                if (action === "new") {
+                  await sessionAction(name, "start", { resume: false });
                 } else {
                   await sessionAction(name, action);
                 }
@@ -728,8 +730,8 @@ module Aix
             <section class="toolbar">
               <a href="/" style="color: var(--accent); text-decoration: none;">&larr; Projects</a>
               <strong>#{escaped_name}</strong>
-              <button type="button" id="start">Start</button>
-              <button type="button" id="resume">Resume</button>
+              <button type="button" id="start" title="Its last conversation, or a new one where there's none">Start</button>
+              <button type="button" id="new" title="A new conversation">New</button>
               <button type="button" class="danger" id="stop">Stop</button>
               <div class="meta">Click the pane, then type. Use the command box for full lines.</div>
             </section>
@@ -832,9 +834,9 @@ module Aix
               }
             });
 
-            document.getElementById("resume").addEventListener("click", async () => {
+            document.getElementById("new").addEventListener("click", async () => {
               try {
-                await api(`/api/sessions/${encodeURIComponent(sessionName)}/start`, { resume: true });
+                await api(`/api/sessions/${encodeURIComponent(sessionName)}/start`, { resume: false });
                 pane.focus();
               } catch (error) {
                 statusEl.textContent = error.message;

@@ -47,7 +47,8 @@ back to the lead's window.
 In the TUI, `Enter` goes to the selected project's agent, starting it if
 it isn't running: in its last conversation, or a new one if it has none
 (for Codex, `codex resume --last`, which does that itself). `n` starts it
-in a new conversation instead.
+in a new conversation instead. The web dashboard's Start and New buttons,
+and the lead's `start` tool, do the same.
 
 The right side shows the selected project's screen as you move
 through the list: live for an agent that's running, and otherwise as it
@@ -93,10 +94,11 @@ claude mcp add aix-control -- /path/to/aix --mcp
 
 The tools are `list_projects`, `status`, `start`, `stop`, `send`, `peek`,
 `focus`, `set_leader`, `get_leader`, `list_roots`, `add_root` and
-`refresh`. `start` takes a `harness` (`claude` or `codex`) to run a
-project in the other one, and `resume` to resume its last conversation
-(refused while that's open elsewhere). `status` and `list_projects` list
-each project's conversations open elsewhere (`open_elsewhere`).
+`refresh`. `start` resumes the project's last conversation, as `Enter`
+does, unless it's open elsewhere; `resume: false` starts a new one, for a
+task that doesn't need what came before. It takes a `harness` (`claude` or
+`codex`) to run a project in the other one. `status` and `list_projects`
+list each project's conversations open elsewhere (`open_elsewhere`).
 
 ## The mail bell
 
