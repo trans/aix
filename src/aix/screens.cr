@@ -57,6 +57,27 @@ module Aix
       lines.map { |line| cut(line, width) }.join("\n")
     end
 
+    # Text with its lines broken at spaces to fit `width` columns.
+    def self.wrap(text : String, width : Int32) : String
+      return text if width <= 0
+      text.lines.flat_map { |line|
+        rows = [] of String
+        row = ""
+        line.split(' ').each do |word|
+          if row.empty?
+            row = word
+          elsif row.size + 1 + word.size <= width
+            row += " #{word}"
+          else
+            rows << row
+            row = word
+          end
+        end
+        rows << row
+        rows
+      }.join("\n")
+    end
+
     # A line cut to `width` columns, counting a wide character (most CJK,
     # emoji) as two.
     private def self.cut(line : String, width : Int32) : String

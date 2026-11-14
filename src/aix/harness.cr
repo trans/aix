@@ -167,6 +167,17 @@ module Aix
       end
     end
 
+    # The conversation `resume_args` resumes in Claude Code: the one with
+    # id `session_id` if its transcript is there, else the folder's newest
+    # (what `--continue` takes), else none.
+    def self.claude_resume_target(directory : String, session_id : String?,
+                                  config_dir : String = claude_config_dir) : String?
+      transcripts = File.join(config_dir, "projects", project_key(directory))
+      return session_id if session_id && File.exists?(File.join(transcripts, "#{session_id}.jsonl"))
+      Dir.glob(File.join(transcripts, "*.jsonl")).max_by? { |path| File.info(path).modification_time }
+        .try { |path| File.basename(path, ".jsonl") }
+    end
+
     # The folder Claude Code keeps a project's transcripts in, under
     # `projects/`: its path with each character other than a letter, digit
     # or `-` made a `-` (`/home/me/x.y` is `-home-me-x-y`).

@@ -40,6 +40,16 @@ background for mail.
 - [ ] An interrupted Codex turn (Esc) leaves its record `busy`, since no
       Stop hook runs, so the bell answers "busy" until its next turn ends.
       dot-ai's to settle, if anyone's: ask @tom.
+- [x] Open elsewhere (user, 2026-11-14): the TUI marks a project open in
+      another program (`◐`) and says where; aix doesn't resume a
+      conversation another program holds (dot-ai's "one runner per
+      session"). Claude Code's from `~/.claude/sessions/`, Codex's from
+      its per-conversation locks and `/proc/locks`. The MCP `start` takes
+      `resume`; `status` lists `open_elsewhere`.
+- [ ] Codex: which conversation `resume --last` takes isn't known, so any
+      of the project's Codex conversations open elsewhere stops a resume.
+      Reading Codex's state database would tell, or aix could pass the
+      id itself (`codex resume <id>`).
 - [ ] Which harness a project last ran isn't a good default: trying a
       project in the wrong one leaves a transcript there too. Detection
       stays with `AGENTS.md`; the choice is the person's.
@@ -88,8 +98,9 @@ console.
       session id's transcript, else `--continue`, else a new conversation.
 - [ ] The preview, next: colour (`capture-pane -e` and a parser for crt);
       the list's running marks (●/○) refreshed while the TUI is open.
-- [ ] The Resume box stays ticked from one project to the next; it may
-      belong to the selected project instead.
+- [x] No Resume box (user, 2026-11-14): `Enter` resumes the last
+      conversation (or starts one), `n` starts a new one. The box stayed
+      ticked from one project to the next.
 - [x] Quitting the TUI leaves agents running (2026-11-12); it used to stop
       them all.
 - [ ] Sidebar file browser (user, 2026-11-11): get to the files agents

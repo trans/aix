@@ -10,6 +10,7 @@ require "./aix/control"
 require "./aix/mcp_server"
 require "./aix/bell"
 require "./aix/runner"
+require "./aix/conversations"
 
 module Aix
   VERSION = "0.3.0"

@@ -21,7 +21,8 @@ module Aix
     # All discovered projects with their live state.
     def list
       @manager.refresh
-      @manager.sessions.map { |s| info(s) }
+      elsewhere = Conversations.elsewhere
+      @manager.sessions.map { |s| info(s, elsewhere) }
     end
 
     # A single project's state.
@@ -51,12 +52,21 @@ module Aix
 
     # Start the AI harness in a project's tmux window: `harness` (`claude`
     # or `codex`) if given, kept as the project's choice, else the
-    # project's own.
-    def start(name : String, args : Array(String) = [] of String, harness : String? = nil)
+    # project's own. With `resume`, its last conversation, unless that's
+    # open in another program.
+    def start(name : String, args : Array(String) = [] of String, harness : String? = nil,
+              resume : Bool = false)
       @manager.refresh
       if harness
         kind = Harness::Kind.parse?(harness) || raise "No harness '#{harness}': claude or codex"
         @manager.set_harness(name, kind)
+      end
+      if resume
+        project = require_session(name)
+        if refusal = project.resume_refusal
+          raise "Not resumed: #{refusal}"
+        end
+        args = project.resume_args + args
       end
       session = @manager.start(name, args)
       @manager.persist_sessions
@@ -117,14 +127,17 @@ module Aix
       session
     end
 
-    private def info(session : Session)
+    private def info(session : Session, elsewhere = Conversations.elsewhere)
       {
-        name:      session.name,
-        directory: session.directory,
-        parent:    session.parent,
-        state:     state_label(session),
-        running:   session.running?,
-        harness:   session.harness.program,
+        name:          session.name,
+        directory:     session.directory,
+        parent:        session.parent,
+        state:         state_label(session),
+        running:       session.running?,
+        harness:       session.harness.program,
+        open_elsewhere: Conversations.in(elsewhere, session.directory).map { |open|
+          {harness: open.harness.program, where: open.where, pid: open.pid, id: open.id}
+        },
       }
     end
 

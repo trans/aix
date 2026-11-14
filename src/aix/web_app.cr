@@ -96,6 +96,9 @@ module Aix
           existing = manager.find(name)
           raise "No session named '#{name}'" unless existing
           unless existing.running?
+            if resume && (refusal = existing.resume_refusal)
+              raise "Not resumed: #{refusal}"
+            end
             args = resume ? existing.resume_args : [] of String
             manager.start(name, args)
             manager.persist_sessions

@@ -22,24 +22,20 @@ module Aix
       CRT::Screen.open(alt_screen: true, raw_mode: true, hide_cursor: true) do |screen|
         sw = screen.width
         sh = screen.height
-        items = build_items
+        elsewhere = Conversations.elsewhere
+        items = build_items(elsewhere)
 
         # -- Header bar --
         CRT::Label.new(screen, x: 0, y: 0, width: sw, height: 1,
           text: " AIX v#{VERSION}", style: CRT.theme.field)
 
         # -- Sidebar: project list --
-        list_height = sh - 4 # header + footer + border top/bottom
+        list_height = sh - 2 # between header and footer, as the panel
         list = CRT::ListBox.new(screen, x: 0, y: 1,
           items: items,
           width: SIDEBAR_WIDTH,
           height: list_height,
           border: CRT::Border::Single)
-
-        # -- Resume checkbox (below list, in sidebar area) --
-        resume_y = 1 + list_height
-        resume_cb = CRT::Checkbox.new(screen, x: 1, y: resume_y,
-          text: "Resume conversation")
 
         # -- Right panel: session detail --
         detail_x = SIDEBAR_WIDTH
@@ -53,11 +49,22 @@ module Aix
           valign: CRT::Ansi::VAlign::Top,
           pad: 1)
 
-        # The selected project, then its agent's screen: live if it's
-        # running, else as it was when aix last saw it (`Screens`).
+        # The selected project, where else it's open, then its agent's
+        # screen: live if it's running, else as it was when aix last saw it
+        # (`Screens`). `notice` goes in place of the screen.
         screen_w = detail_w - 4 # border and padding
         screen_h = detail_h - 6 # border, padding, the title and a blank line
-        update_detail = ->(index : Int32) {
+        # Where projects are open outside aix, looked at again when it's
+        # more than a moment old.
+        elsewhere_at = Time.instant
+        current_elsewhere = -> {
+          if Time.instant - elsewhere_at > 2.seconds
+            elsewhere = Conversations.elsewhere
+            elsewhere_at = Time.instant
+          end
+          elsewhere
+        }
+        show_detail = ->(index : Int32, notice : String?) {
           session = @manager.sessions[index]?
           if session
             running = session.running?
@@ -65,64 +72,62 @@ module Aix
             where = session.directory.sub(/\A#{Regex.escape(Path.home.to_s)}/, "~")
             above = session.parent ? "  ·  below #{session.parent}" : ""
             title = Screens.fit("#{session.name}  ·  #{session.harness.label}, #{state_text}  ·  #{where}#{above}", screen_w, 1)
-            shown = Screens.preview(session.name, screen_w, screen_h)
-            shown ||= running ? "(its screen can't be read)" : "No screen saved yet: Enter starts its agent."
-            detail.text = "#{title}\n\n#{shown}"
+            others = Conversations.in(current_elsewhere.call, session.directory).first(3).map do |open|
+              Screens.fit("Also open: #{Conversations.describe(open)}", screen_w, 1)
+            end
+            body = if notice
+                     Screens.wrap(notice, screen_w)
+                   else
+                     shown = Screens.preview(session.name, screen_w, screen_h - others.size)
+                     shown || (running ? "(its screen can't be read)" : "No screen saved yet: Enter starts its agent.")
+                   end
+            detail.text = ([title] + others).join("\n") + "\n\n#{body}"
           else
             detail.text = ""
           end
           nil
         }
+        update_detail = ->(index : Int32) { show_detail.call(index, nil) }
 
         # -- Footer bar --
         footer_y = sh - 1
         CRT::Label.new(screen, x: 0, y: footer_y, width: sw, height: 1,
-          text: " Enter:Open  Tab:Resume box  h:Harness  a:Add Root  d:Stop  q:Quit", style: CRT.theme.field)
+          text: " Enter:Open  n:New conversation  h:Harness  a:Add Root  d:Stop  q:Quit", style: CRT.theme.field)
 
-        # -- Sync resume checkbox with session state --
-        sync_resume = ->(index : Int32) {
-          session = @manager.sessions[index]?
-          if session && session.running?
-            resume_cb.check
-          end
-          nil
-        }
-
-        resume_cb.on_change = ->(checked : Bool) {
-          session = @manager.sessions[list.selected]?
-          if session && session.running? && !checked
-            resume_cb.check
-          end
-          nil
-        }
-
-        # Set initial state
-        sync_resume.call(list.selected)
         update_detail.call(list.selected)
 
         list.on_change = ->(index : Int32) {
-          sync_resume.call(index)
           update_detail.call(index)
           nil
         }
 
-        open_action = ->{
+        # Go to the selected project's agent, starting it if it isn't
+        # running: in its last conversation (`Session#resume_args`, a new
+        # one where there's none), or, with `fresh`, in a new one.
+        open_action = ->(fresh : Bool) {
           index = list.selected
           session = @manager.sessions[index]?
-          if session
-            @manager.switch(session.name)
-            unless session.running?
-              args = resume_cb.checked? ? session.resume_args : [] of String
-              session.start(args)
-              @manager.persist_sessions
+          if session && session.running? && fresh
+            show_detail.call(index, "It's running: Enter goes to it, and d stops it, to start a new conversation.")
+          elsif session
+            refusal = session.running? || fresh ? nil : session.resume_refusal
+            if refusal
+              # Another program holds the conversation: say so, and stay.
+              show_detail.call(index, "Not resumed: #{refusal}\nn starts a new one.")
+            else
+              @manager.switch(session.name)
+              unless session.running?
+                session.start(fresh ? [] of String : session.resume_args)
+                @manager.persist_sessions
+              end
+              selected_name = session.name
             end
-            selected_name = session.name
           end
           nil
         }
 
         list.on_activate = ->(_index : Int32) {
-          open_action.call
+          open_action.call(false)
           nil
         }
 
@@ -138,6 +143,8 @@ module Aix
                 quit = true unless screen.focused_widget.is_a?(CRT::Entry)
               elsif !event.ctrl? && event.char == "a"
                 add_new = true unless screen.focused_widget.is_a?(CRT::Entry)
+              elsif !event.ctrl? && event.char == "n"
+                open_action.call(true) unless screen.focused_widget.is_a?(CRT::Entry)
               elsif !event.ctrl? && event.char == "h"
                 # Switch the selected project between Claude Code and
                 # Codex, from its next start: not while its agent runs.
@@ -227,14 +234,20 @@ module Aix
       run
     end
 
-    private def build_items : Array(String)
+    # The list: each project with a mark for its agent. ● running in aix,
+    # ◐ open in another program, ○ not started, ✕ stopped.
+    private def build_items(elsewhere : Hash(String, Array(Conversations::Open))) : Array(String)
       return ["(no projects — press 'a' to add a root)"] if @manager.sessions.empty?
 
       @manager.sessions.map do |s|
-        status = case s.state
-                 when SessionState::Running then "●"
-                 when SessionState::Cold    then "○"
-                 else                            "✕"
+        status = if s.running?
+                   "●"
+                 elsif !Conversations.in(elsewhere, s.directory).empty?
+                   "◐"
+                 elsif s.cold?
+                   "○"
+                 else
+                   "✕"
                  end
         "#{"  " * s.level}#{status} #{s.name}"
       end

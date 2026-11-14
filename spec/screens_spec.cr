@@ -12,6 +12,11 @@ describe Aix::Screens do
     Aix::Screens.fit("ok ✓ done", 9, 1).should eq "ok ✓ done"
   end
 
+  it "wraps text at spaces to fit a width" do
+    Aix::Screens.wrap("its conversation is open in a terminal\nUntick Resume", 16)
+      .should eq "its conversation\nis open in a\nterminal\nUntick Resume"
+  end
+
   it "fits nothing into no room" do
     Aix::Screens.fit("text", 0, 3).should eq ""
     Aix::Screens.fit("text", 3, 0).should eq ""

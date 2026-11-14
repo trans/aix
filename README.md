@@ -44,7 +44,12 @@ tmux window `name` match.
 All modes share one tmux session, `aix`. `F12` detaches, and `F9` jumps
 back to the lead's window.
 
-In the TUI, the right side shows the selected project's screen as you move
+In the TUI, `Enter` goes to the selected project's agent, starting it if
+it isn't running: in its last conversation, or a new one if it has none
+(for Codex, `codex resume --last`, which does that itself). `n` starts it
+in a new conversation instead.
+
+The right side shows the selected project's screen as you move
 through the list: live for an agent that's running, and otherwise as it
 was when aix last saw it (when you left it, or when it was stopped). The
 screens are kept in `~/.local/state/aix/screens/`. Quitting the TUI (`q`)
@@ -59,9 +64,26 @@ next start, and aix remembers the choice (`harness` in
 When an agent's harness exits (or fails to start), its window stays,
 showing its last screen and a line saying it exited, rather than tmux
 moving you to another agent's window. `F12` takes you back to the TUI,
-where `Enter` starts it again. With the Resume box ticked, aix resumes the
-project's last conversation, or starts a new one if it has none (for
-Codex, `codex resume --last`, which does that itself).
+where `Enter` starts it again.
+
+### Open elsewhere
+
+A project can also be open outside aix: in VS Code, the Codex app, or a
+terminal. The list marks such a project `◐` (`●` is running in aix, `○`
+not started), and its panel says where: "Also open: Codex in Codex's
+shared app server (pid …)". aix won't resume a conversation another
+program holds, following dot-ai's rule that only a session's runner
+resumes it. `Enter` says where the conversation is open instead, and you
+can close it there, or press `n` for a new one beside it.
+
+aix sees Claude Code's sessions from the file Claude Code keeps for each
+running one (`~/.claude/sessions/`), and Codex's from the lock Codex
+holds on each open conversation (`~/.codex/thread-writer-locks/`, with the
+holder from `/proc/locks`). Codex has no way of saying which conversation
+`resume --last` will take, so for Codex any of the project's conversations
+open elsewhere stops a resume. Codex refuses one that's locked anyway
+("This conversation is open in another app"); Claude Code has no such
+lock, which makes aix's check the only guard there.
 
 To give the lead aix's control tools in Claude Code:
 
@@ -72,7 +94,9 @@ claude mcp add aix-control -- /path/to/aix --mcp
 The tools are `list_projects`, `status`, `start`, `stop`, `send`, `peek`,
 `focus`, `set_leader`, `get_leader`, `list_roots`, `add_root` and
 `refresh`. `start` takes a `harness` (`claude` or `codex`) to run a
-project in the other one.
+project in the other one, and `resume` to resume its last conversation
+(refused while that's open elsewhere). `status` and `list_projects` list
+each project's conversations open elsewhere (`open_elsewhere`).
 
 ## The mail bell
 

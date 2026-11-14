@@ -3,6 +3,7 @@ require "./tmux"
 require "./harness"
 require "./runner"
 require "./screens"
+require "./conversations"
 
 module Aix
   enum SessionState
@@ -63,6 +64,21 @@ module Aix
     # The arguments that resume its last conversation (`Harness.resume_args`).
     def resume_args : Array(String)
       Harness.resume_args(@harness, @directory, @claude_session_id)
+    end
+
+    # The conversation, open in another program, that resuming would take
+    # over, if any: `open` is the project's conversations open outside
+    # aix (`Conversations`). aix doesn't resume one of those.
+    def resume_blocker(open : Array(Conversations::Open)) : Conversations::Open?
+      target = @harness.claude? ? Harness.claude_resume_target(@directory, @claude_session_id) : nil
+      Conversations.blocking(open, @harness, target)
+    end
+
+    # Why it can't be resumed now, or nil if it can.
+    def resume_refusal : String?
+      blocker = resume_blocker(Conversations.in(Conversations.elsewhere, @directory)) || return nil
+      "its conversation is open in #{blocker.where} (pid #{blocker.pid}). " \
+      "Close it there to resume it here."
     end
 
     # Scan ~/.claude/sessions/ for the most recent session matching our directory.
