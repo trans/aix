@@ -224,12 +224,14 @@ module Aix
       nil
     end
 
-    # The windows of the aix session, with their first pane's process.
+    # The windows of the aix session, with their first pane's process. A
+    # window whose program has exited has none, and isn't listed.
     def self.window_pids : Array({String, Int64})
-      capture("list-panes", "-s", "-t", SESSION, "-F", "\#{window_name}\t\#{pane_index}\t\#{pane_pid}")
+      capture("list-panes", "-s", "-t", SESSION, "-F", "\#{window_name}\t\#{pane_index}\t\#{pane_pid}\t\#{pane_dead}")
         .lines.compact_map do |line|
-          name, index, pid = line.split('\t')
-          index == "0" ? {name, pid.to_i64} : nil
+          name, index, pid, dead = line.split('\t')
+          next unless index == "0" && dead != "1"
+          pid.to_i64?.try { |number| {name, number} }
         end
     rescue
       [] of {String, Int64}
