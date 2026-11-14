@@ -1,14 +1,14 @@
 # Maintainer: Thomas Sawyer <transfire@gmail.com>
 pkgname=aix
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
-pkgdesc="Claude Code terminal multiplexer with TUI, web, and REPL modes"
+pkgdesc="tmux-based manager for AI coding harnesses (Claude Code, Codex), with TUI, web, REPL and MCP modes"
 arch=('x86_64')
 url="https://github.com/trans/aix"
 license=('MIT')
 depends=('tmux' 'pcre2' 'libevent' 'gc' 'openssl' 'libxml2' 'sqlite')
 makedepends=('crystal' 'shards' 'git')
-optdepends=('claude-code: the LLM CLI that AIX multiplexes')
+optdepends=('claude-code: Claude Code, one of the harnesses aix runs')
 source=("$pkgname-$pkgver::git+https://github.com/trans/aix.git#tag=v$pkgver")
 sha256sums=('SKIP')
 

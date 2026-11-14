@@ -12,7 +12,7 @@ require "./aix/bell"
 require "./aix/runner"
 
 module Aix
-  VERSION = "0.2.0"
+  VERSION = "0.3.0"
 
   def self.run
     if ARGV.first? == "tell"
@@ -124,7 +124,7 @@ module Aix
   def self.run_repl(manager, passthrough)
     console = MetaConsole.new(manager)
 
-    puts "AIX v#{VERSION} — Claude Code multiplexer"
+    puts "AIX v#{VERSION} — AI harness manager (Claude Code, Codex)"
     puts "Type 'help' for commands.\n"
 
     loop do
