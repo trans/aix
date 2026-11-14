@@ -100,7 +100,8 @@ module Aix
       when "status"
         @control.status(arg_string(args, "name")).to_json
       when "start"
-        @control.start(arg_string(args, "name"), arg_string_array(args, "args")).to_json
+        @control.start(arg_string(args, "name"), arg_string_array(args, "args"),
+          args["harness"]?.try(&.as_s?)).to_json
       when "stop"
         @control.stop(arg_string(args, "name")).to_json
       when "send"
@@ -170,12 +171,13 @@ module Aix
       },
       {
         "name": "start",
-        "description": "Start the AI harness (e.g. Claude Code) in a project's tmux window. Fails if it is already running.",
+        "description": "Start the project's AI harness (Claude Code or Codex) in its tmux window. Fails if it is already running.",
         "inputSchema": {
           "type": "object",
           "properties": {
             "name": { "type": "string", "description": "Project name" },
-            "args": { "type": "array", "items": { "type": "string" }, "description": "Optional extra args passed to the harness" }
+            "args": { "type": "array", "items": { "type": "string" }, "description": "Optional extra args passed to the harness" },
+            "harness": { "type": "string", "enum": ["claude", "codex"], "description": "Optional: run this harness, and keep it as the project's choice. Default: the project's (status reports it)" }
           },
           "required": ["name"]
         }

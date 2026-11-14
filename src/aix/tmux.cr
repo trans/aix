@@ -53,22 +53,25 @@ module Aix
       nil
     end
 
-    # What a window shows under claude's last screen when claude has exited.
-    EXITED_NOTICE = "claude exited (\#{?pane_dead_signal,signal \#{pane_dead_signal},status \#{pane_dead_status}}). " \
-                    "F12: back to aix, where Enter starts it again."
+    # What a window shows under its program's last screen when the program
+    # has exited.
+    def self.exited_notice(program : String) : String
+      "#{program} exited (\#{?pane_dead_signal,signal \#{pane_dead_signal},status \#{pane_dead_status}}). " \
+      "F12: back to aix, where Enter starts it again."
+    end
 
-    # Create a new window running claude with the given args, and `env`
-    # set in its environment. The window stays when claude exits
-    # (`remain-on-exit`), so its last screen, an error included, is still
-    # there to see, rather than tmux moving the user to another agent's
-    # window.
-    def self.new_window(name : String, directory : String, args : Array(String) = [] of String,
+    # Create a new window running `command` (a program and its arguments),
+    # with `env` set in its environment. The window stays when the program
+    # exits (`remain-on-exit`), so its last screen, an error included, is
+    # still there to see, rather than tmux moving the user to another
+    # agent's window.
+    def self.new_window(name : String, directory : String, command : Array(String),
                         env : Hash(String, String) = {} of String => String)
       ensure_session
-      # A window left by an exited claude is reused (killing it could close
-      # the session, were it the last). A new one starts on a placeholder,
-      # so `remain-on-exit` is on before claude starts, however soon it
-      # exits.
+      # A window left by an exited program is reused (killing it could
+      # close the session, were it the last). A new one starts on a
+      # placeholder, so `remain-on-exit` is on before the program starts,
+      # however soon it exits.
       pane = window_dead?(name) ? capture("list-panes", "-t", "#{SESSION}:=#{name}", "-F", "\#{pane_id}").lines.first.strip : nil
       unless pane
         err = IO::Memory.new
@@ -79,12 +82,12 @@ module Aix
         raise "tmux new-window: #{err.to_s.strip}" unless result.success?
         pane = created.to_s.strip
         run("set-option", "-w", "-t", pane, "remain-on-exit", "on")
-        run("set-option", "-w", "-t", pane, "remain-on-exit-format", EXITED_NOTICE)
       end
+      run("set-option", "-w", "-t", pane, "remain-on-exit-format", exited_notice(command.first))
       respawn = ["respawn-pane", "-k", "-t", pane, "-c", directory]
       env.each { |key, value| respawn.concat(["-e", "#{key}=#{value}"]) }
-      respawn.concat(["--", "claude"])
-      respawn.concat(args)
+      respawn << "--"
+      respawn.concat(command)
       err = IO::Memory.new
       result = Process.run("tmux", respawn, error: err)
       raise "tmux respawn-pane: #{err.to_s.strip}" unless result.success?
@@ -176,7 +179,7 @@ module Aix
 
     # The visible screen of window `name` (exactly that name), as text. Nil
     # if there's no such window. When its program has exited, tmux puts
-    # EXITED_NOTICE on the bottom line, and its last output may have gone
+    # `exited_notice` on the bottom line, and its last output may have gone
     # up into the history, so a screen's worth of history comes too, with
     # the blank lines between the output and the notice taken out.
     def self.capture_screen(name : String) : String?
@@ -239,6 +242,12 @@ module Aix
         .lines.compact_map(&.strip.to_i64?).max?.try { |secs| Time.unix(secs) }
     rescue
       nil
+    end
+
+    # Visible line `y` of a pane (0 is the top line) with its colours and
+    # attributes, as escape sequences.
+    def self.pane_line_styled(pane_id : String, y : Int32) : String
+      capture("capture-pane", "-p", "-e", "-t", pane_id, "-S", y.to_s, "-E", y.to_s).chomp
     end
 
     # Visible lines `from` to `to` of a pane (0 is the top line). A line

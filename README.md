@@ -1,7 +1,7 @@
 # aix
 
 aix is a tmux-based manager for AI coding harnesses. Each project's agent
-runs as a full harness (Claude Code today) in its own tmux window.
+runs as a full harness, Claude Code or Codex, in its own tmux window.
 
 You can work with the agents in two ways:
 
@@ -51,11 +51,17 @@ screens are kept in `~/.local/state/aix/screens/`. Quitting the TUI (`q`)
 leaves the agents running in tmux, and `aix` picks them up again; `d`
 stops one.
 
+Each project runs Claude Code, or Codex if it has an `AGENTS.md` and no
+`CLAUDE.md`. `h` switches the selected project between the two, from its
+next start, and aix remembers the choice (`harness` in
+`~/.config/aix/config.json`, by directory).
+
 When an agent's harness exits (or fails to start), its window stays,
 showing its last screen and a line saying it exited, rather than tmux
 moving you to another agent's window. `F12` takes you back to the TUI,
 where `Enter` starts it again. With the Resume box ticked, aix resumes the
-project's last conversation, or starts a new one if it has none.
+project's last conversation, or starts a new one if it has none (for
+Codex, `codex resume --last`, which does that itself).
 
 To give the lead aix's control tools in Claude Code:
 
@@ -65,26 +71,29 @@ claude mcp add aix-control -- /path/to/aix --mcp
 
 The tools are `list_projects`, `status`, `start`, `stop`, `send`, `peek`,
 `focus`, `set_leader`, `get_leader`, `list_roots`, `add_root` and
-`refresh`.
+`refresh`. `start` takes a `harness` (`claude` or `codex`) to run a
+project in the other one.
 
 ## The mail bell
 
-aix starts each agent as `claude` in its own tmux window, and tells it
-when mail comes the way you would: it types `You have mail in
-.ai/mail/inbox/.` into the agent's pane. The agent then reads the mail
-itself. The notice never carries a message's text.
+aix starts each agent in its own tmux window, and tells it when mail
+comes the way you would: it types `You have mail in .ai/mail/inbox/.`
+into the agent's pane. The agent then reads the mail itself. The notice
+never carries a message's text.
 
 dot-ai's carrier rings the bell itself: when it delivers mail to a project
 whose agent aix runs, it runs `aix tell` (below), so nothing of aix's runs
 in the background. Typing into a pane is only safe at an empty prompt, so
 the bell rings only when all of these hold:
 
-- Claude Code's session file says the session is idle. A busy session is
-  told by dot-ai's end-of-turn hook instead. During a startup dialog
-  there's no session file, so the bell holds.
+- The session is idle: Claude Code's session file says so, or for Codex,
+  dot-ai's record of the session. A busy session is told by dot-ai's
+  end-of-turn hook instead. During Claude Code's startup dialogs there's
+  no session file, and Codex's hooks write no record until its first
+  prompt, so until then the bell holds.
 - You aren't typing in that pane right now.
-- The cursor is in Claude Code's input box, and the box is empty. A draft
-  of yours is never touched.
+- The cursor is in the input box, and the box is empty (Codex's grey
+  placeholder counts as empty). A draft of yours is never touched.
 
 When ringing has to wait, aix flashes a tmux message (`aix: mail for
 @name`), and the agent hears at the end of its next turn or when it
@@ -96,7 +105,8 @@ Under dot-ai's spec (Draft 0.5, "Runners"), aix is the runner of the
 sessions it starts, and dot-ai's carrier tells it of their mail:
 
 - Sessions aix starts get `DOT_AI_BY=aix`, so dot-ai's hooks record
-  `by=aix` for them.
+  `by=aix` for them. Codex runs as `codex --no-daemon`, its app server in
+  its own process, since only then do its hooks see that variable.
 - Each time aix starts one, it registers itself:
   `~/.local/state/dot-ai/runners/aix` holds its program's absolute path.
 - When the carrier delivers mail to such a session's project, it runs
@@ -131,9 +141,7 @@ is in `pkg/`.
 
 ## Status
 
-Early, and changing. Work in progress is listed in `TODO.md`. Next:
-starting Codex agents (`codex --no-daemon`, so their hooks see
-`DOT_AI_BY`).
+Early, and changing. Work in progress is listed in `TODO.md`.
 
 ## License
 

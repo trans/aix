@@ -1,5 +1,6 @@
 require "json"
 require "yaml"
+require "./harness"
 
 module Aix
   # AIX configuration, and where it finds projects.
@@ -39,9 +40,25 @@ module Aix
     # Start Claude Code with dot-ai's mail channel, the fallback to aix's
     # bell (`Harness`, `Bell`): `"mail": {"channel": true}`. Off otherwise.
     property mail_channel : Bool
+    # The harness the person chose for a project, by its directory:
+    # `"harness": {"/home/me/Projects/x": "codex"}`. A project not listed
+    # gets what it's set up for (`Harness.detect`).
+    property harnesses : Hash(String, String)
 
     def initialize(@roots : Array(String) = [] of String, @depth : Int32 = DEFAULT_DEPTH,
-                   @leader : String? = nil, @mail_channel : Bool = false)
+                   @leader : String? = nil, @mail_channel : Bool = false,
+                   @harnesses : Hash(String, String) = {} of String => String)
+    end
+
+    # The harness for the project in `directory`.
+    def harness_for(directory : String) : Harness::Kind
+      @harnesses[directory]?.try { |name| Harness::Kind.parse?(name) } || Harness.detect(directory)
+    end
+
+    # Choose the harness for the project in `directory`, and save.
+    def set_harness(directory : String, kind : Harness::Kind)
+      @harnesses[directory] = kind.program
+      save
     end
 
     # The directories searched for projects: `ai.path`'s, or without any,
@@ -96,14 +113,19 @@ module Aix
       depth = raw["depth"]?.try(&.as_i?) || DEFAULT_DEPTH
       leader = raw["leader"]?.try(&.as_s?)
       mail_channel = raw["mail"]?.try(&.as_h?).try(&.["channel"]?).try(&.as_bool?)
-      new(roots, depth, leader, mail_channel || false)
+      harnesses = {} of String => String
+      raw["harness"]?.try(&.as_h?).try &.each do |dir, name|
+        name.as_s?.try { |value| harnesses[dir] = value }
+      end
+      new(roots, depth, leader, mail_channel || false, harnesses)
     rescue
       new
     end
 
     def save
       Dir.mkdir_p(self.class.config_dir)
-      File.write(self.class.path, {roots: @roots, depth: @depth, leader: @leader, mail: {channel: @mail_channel}}.to_json)
+      File.write(self.class.path, {roots: @roots, depth: @depth, leader: @leader, mail: {channel: @mail_channel},
+                                   harness: @harnesses}.to_json)
     end
 
     # Add a directory to search: to git config's `ai.path` when the search

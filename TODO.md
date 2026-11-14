@@ -26,13 +26,23 @@ background for mail.
       its own record `ended`.
 - [x] Retired `aix --bridge`, `aix update` and the inotify watcher
       (2026-11-13), once the carrier was seen running `aix tell`.
-- [ ] Codex in aix: start `codex --no-daemon` with `DOT_AI_BY=aix`. Its
-      app server runs in the pane's process, and its hooks see the
-      variable (tested 2026-11-12). A plain `codex` uses the shared daemon
-      and gets the daemon's environment instead.
-- [ ] The bell for Codex: read the dot-ai record's `state` for idle (Codex
-      has no status file), then type the notice as for Claude Code. `codex
-      queue` may not reach a `--no-daemon` session.
+- [x] Codex in aix (user, 2026-11-13): a project runs Codex if it has an
+      `AGENTS.md` and no `CLAUDE.md`, or if the person switched it (`h` in
+      the TUI, `start`'s `harness`; kept in the config by directory). aix
+      starts `codex --no-daemon` with `DOT_AI_BY=aix`, and resumes with
+      `resume --last`, which starts a new conversation where there's none.
+- [x] The bell for Codex (2026-11-13, tested live on Codex 0.167.2): idle
+      from the dot-ai record naming the pane's process; empty input from
+      the cursor's line, where Codex's placeholder is dim and a draft
+      isn't. The notice went in and Codex took it as a prompt.
+- [ ] A Codex session isn't rung until its first prompt: Codex's hooks
+      write its record only then.
+- [ ] An interrupted Codex turn (Esc) leaves its record `busy`, since no
+      Stop hook runs, so the bell answers "busy" until its next turn ends.
+      dot-ai's to settle, if anyone's: ask @tom.
+- [ ] Which harness a project last ran isn't a good default: trying a
+      project in the wrong one leaves a transcript there too. Detection
+      stays with `AGENTS.md`; the choice is the person's.
 - [ ] Bell, untested live: the "user is typing in that pane" guard needs
       an attached client.
 - [ ] Bell, once the sidebar shares windows: `Tmux.pane_info` takes a

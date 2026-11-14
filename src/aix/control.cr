@@ -49,9 +49,15 @@ module Aix
       {ok: true, count: @manager.sessions.size}
     end
 
-    # Start the AI harness in a project's tmux window.
-    def start(name : String, args : Array(String) = [] of String)
+    # Start the AI harness in a project's tmux window: `harness` (`claude`
+    # or `codex`) if given, kept as the project's choice, else the
+    # project's own.
+    def start(name : String, args : Array(String) = [] of String, harness : String? = nil)
       @manager.refresh
+      if harness
+        kind = Harness::Kind.parse?(harness) || raise "No harness '#{harness}': claude or codex"
+        @manager.set_harness(name, kind)
+      end
       session = @manager.start(name, args)
       @manager.persist_sessions
       info(session)
@@ -118,6 +124,7 @@ module Aix
         parent:    session.parent,
         state:     state_label(session),
         running:   session.running?,
+        harness:   session.harness.program,
       }
     end
 

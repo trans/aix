@@ -100,6 +100,20 @@ describe Aix::Config do
       end
     end
   end
+
+  describe "#harness_for" do
+    it "is the person's choice, saved by directory, else what the project is set up for" do
+      with_tmpdir do |project|
+        File.write(File.join(project, "AGENTS.md"), "")
+        with_config(%({"roots": []})) do
+          config = Aix::Config.load
+          config.harness_for(project).should eq Aix::Harness::Kind::Codex
+          config.set_harness(project, Aix::Harness::Kind::Claude)
+          Aix::Config.load.harness_for(project).should eq Aix::Harness::Kind::Claude
+        end
+      end
+    end
+  end
 end
 
 # Run the block with XDG_CONFIG_HOME pointing at a temporary directory whose

@@ -64,7 +64,7 @@ module Aix
             state_text = running ? "running" : "not running"
             where = session.directory.sub(/\A#{Regex.escape(Path.home.to_s)}/, "~")
             above = session.parent ? "  ·  below #{session.parent}" : ""
-            title = Screens.fit("#{session.name}  ·  #{state_text}  ·  #{where}#{above}", screen_w, 1)
+            title = Screens.fit("#{session.name}  ·  #{session.harness.label}, #{state_text}  ·  #{where}#{above}", screen_w, 1)
             shown = Screens.preview(session.name, screen_w, screen_h)
             shown ||= running ? "(its screen can't be read)" : "No screen saved yet: Enter starts its agent."
             detail.text = "#{title}\n\n#{shown}"
@@ -77,7 +77,7 @@ module Aix
         # -- Footer bar --
         footer_y = sh - 1
         CRT::Label.new(screen, x: 0, y: footer_y, width: sw, height: 1,
-          text: " Enter:Open  Tab:Resume box  a:Add Root  d:Stop  q:Quit", style: CRT.theme.field)
+          text: " Enter:Open  Tab:Resume box  h:Harness  a:Add Root  d:Stop  q:Quit", style: CRT.theme.field)
 
         # -- Sync resume checkbox with session state --
         sync_resume = ->(index : Int32) {
@@ -112,7 +112,7 @@ module Aix
           if session
             @manager.switch(session.name)
             unless session.running?
-              args = resume_cb.checked? ? Harness.resume_args(session.directory, session.claude_session_id) : [] of String
+              args = resume_cb.checked? ? session.resume_args : [] of String
               session.start(args)
               @manager.persist_sessions
             end
@@ -138,6 +138,16 @@ module Aix
                 quit = true unless screen.focused_widget.is_a?(CRT::Entry)
               elsif !event.ctrl? && event.char == "a"
                 add_new = true unless screen.focused_widget.is_a?(CRT::Entry)
+              elsif !event.ctrl? && event.char == "h"
+                # Switch the selected project between Claude Code and
+                # Codex, from its next start: not while its agent runs.
+                index = list.selected
+                session = @manager.sessions[index]?
+                if session && !session.running? && !screen.focused_widget.is_a?(CRT::Entry)
+                  other = session.harness.claude? ? Harness::Kind::Codex : Harness::Kind::Claude
+                  @manager.set_harness(session.name, other)
+                  update_detail.call(index)
+                end
               elsif !event.ctrl? && event.char == "d"
                 unless screen.focused_widget.is_a?(CRT::Entry)
                   index = list.selected

@@ -20,9 +20,11 @@ module Aix
     # a folder only the person can open. The carrier runs it only through
     # this file, after checking that only the person can write it. Done each
     # time aix starts a session, so the last aix to start one is the one the
-    # carrier runs.
+    # carrier runs. Only a program named `aix` registers: aix's code run
+    # some other way (`crystal eval`, a spec) would put a passing build in
+    # the installed one's place.
     def self.register(program : String? = Process.executable_path) : Bool
-      return false unless program
+      return false unless program && File.basename(program) == NAME
       dir = File.join(state_dir, "runners")
       Dir.mkdir_p(dir)
       File.chmod(dir, 0o700)
@@ -39,7 +41,8 @@ module Aix
 
     # A session's record, written by dot-ai's hooks inside the session:
     # `sessions/<key>.session`, a `field=value` line each.
-    record SessionRecord, id : String, path : String, by : String?, pid : Int64?, state : String?
+    record SessionRecord, id : String, path : String, by : String?, pid : Int64?, state : String?,
+      agent : String? = nil
 
     # The record file's key: the session id, with each character other than
     # `A-Za-z0-9_.-` turned into `_`.
@@ -48,14 +51,37 @@ module Aix
     end
 
     def self.session_record(id : String) : SessionRecord?
-      path = File.join(state_dir, "sessions", "#{session_key(id)}.session")
+      read_record(File.join(state_dir, "sessions", "#{session_key(id)}.session"), id)
+    end
+
+    # The record of the session running in a pane whose process is
+    # `pane_pid`: the newest open one naming that process, or a child of it.
+    def self.record_in_pane(pane_pid : Int64) : SessionRecord?
+      dir = File.join(state_dir, "sessions")
+      return nil unless Dir.exists?(dir)
+      found = Dir.children(dir).compact_map do |file|
+        next unless file.ends_with?(".session") && !file.starts_with?('.')
+        path = File.join(dir, file)
+        record = read_record(path) || next
+        pid = record.pid || next
+        next if record.state == "ended"
+        next unless pid == pane_pid || Harness.parent_pid(pid) == pane_pid
+        {record, File.info(path).modification_time}
+      end
+      found.max_by?(&.[1]).try(&.[0])
+    rescue
+      nil
+    end
+
+    private def self.read_record(path : String, id : String? = nil) : SessionRecord?
       return nil unless File.exists?(path)
       fields = {} of String => String
       File.each_line(path) do |line|
         key, sep, value = line.partition('=')
         fields[key] = value unless sep.empty? || fields.has_key?(key)
       end
-      SessionRecord.new(id, path, fields["by"]?, fields["pid"]?.try(&.to_i64?), fields["state"]?)
+      id ||= fields["id"]? || return nil
+      SessionRecord.new(id, path, fields["by"]?, fields["pid"]?.try(&.to_i64?), fields["state"]?, fields["agent"]?)
     rescue
       nil
     end

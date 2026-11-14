@@ -20,6 +20,42 @@ module Aix
     # spec, "Runners").
     RUNNER = "aix"
 
+    # The harnesses aix runs. Each is its program's name.
+    enum Kind
+      Claude
+      Codex
+
+      def program : String
+        to_s.downcase
+      end
+
+      def label : String
+        claude? ? "Claude Code" : "Codex"
+      end
+    end
+
+    # The harness a project is set up for, where the person hasn't chosen:
+    # Codex for a project with an `AGENTS.md` and no `CLAUDE.md`, else
+    # Claude Code.
+    def self.detect(directory : String) : Kind
+      agents = File.exists?(File.join(directory, "AGENTS.md"))
+      claude = File.exists?(File.join(directory, "CLAUDE.md"))
+      agents && !claude ? Kind::Codex : Kind::Claude
+    end
+
+    # The command line for a session of `kind`, with `args` after the
+    # program's own. Codex runs as `codex --no-daemon`, its app server in
+    # its own process, so dot-ai's hooks inside it see `DOT_AI_BY` (dot-ai's
+    # spec, "Runners"); a plain `codex` shares one app server, with its
+    # environment.
+    def self.command(kind : Kind, args : Array(String) = [] of String,
+                     mail_channel : Bool = false, installed : Bool = dot_ai_installed?) : Array(String)
+      case kind
+      in .claude? then ["claude"] + claude_args(args, mail_channel, installed)
+      in .codex?  then ["codex", "--no-daemon"] + args
+      end
+    end
+
     # Claude Code's arguments for a session: dot-ai's mail channel, when
     # `mail_channel` is on and the dot-ai plugin is installed, then `args`.
     # Arguments that already load a channel are left alone.
@@ -106,6 +142,13 @@ module Aix
           yield session
         end
       end
+    end
+
+    # The arguments to resume a project's conversation in harness `kind`.
+    # Codex's `resume --last` takes the newest in the directory, or starts
+    # a new one where there's none (Codex 0.167.2).
+    def self.resume_args(kind : Kind, directory : String, session_id : String?) : Array(String)
+      kind.codex? ? ["resume", "--last"] : resume_args(directory, session_id)
     end
 
     # Claude Code's arguments to resume a project's conversation: the one

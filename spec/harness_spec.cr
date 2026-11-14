@@ -29,6 +29,40 @@ describe Aix::Harness do
     end
   end
 
+  describe ".detect" do
+    it "is Codex for a project with an AGENTS.md and no CLAUDE.md, else Claude Code" do
+      with_tmpdir do |dir|
+        Aix::Harness.detect(dir).should eq Aix::Harness::Kind::Claude
+        File.write(File.join(dir, "AGENTS.md"), "")
+        Aix::Harness.detect(dir).should eq Aix::Harness::Kind::Codex
+        File.write(File.join(dir, "CLAUDE.md"), "")
+        Aix::Harness.detect(dir).should eq Aix::Harness::Kind::Claude
+      end
+    end
+  end
+
+  describe ".command" do
+    it "starts Codex without the shared daemon, so its hooks see DOT_AI_BY" do
+      Aix::Harness.command(Aix::Harness::Kind::Codex, ["resume", "--last"])
+        .should eq ["codex", "--no-daemon", "resume", "--last"]
+    end
+
+    it "starts Claude Code with its own arguments" do
+      Aix::Harness.command(Aix::Harness::Kind::Claude, ["--continue"], installed: false)
+        .should eq ["claude", "--continue"]
+    end
+
+    it "names aix as a Codex session's runner" do
+      Aix::Harness.session_env(Aix::Harness.command(Aix::Harness::Kind::Codex)).should eq({"DOT_AI_BY" => "aix"})
+    end
+  end
+
+  describe ".resume_args for Codex" do
+    it "resumes the directory's newest conversation, which starts one where there's none" do
+      Aix::Harness.resume_args(Aix::Harness::Kind::Codex, "/x", "some-id").should eq ["resume", "--last"]
+    end
+  end
+
   describe ".session_env" do
     it "names aix as the runner of a session without a channel" do
       Aix::Harness.session_env(["--continue"]).should eq({"DOT_AI_BY" => "aix"})

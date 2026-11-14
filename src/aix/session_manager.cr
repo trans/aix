@@ -41,6 +41,7 @@ module Aix
         session.parent = project.parent
         session.level = project.level
         session.mail_channel = @config.mail_channel
+        session.harness = @config.harness_for(dir)
         session
       end
 
@@ -86,12 +87,22 @@ module Aix
       session
     end
 
-    # Stop a session's tmux window. The project stays in the list (it is
-    # owned by discovery); it simply returns to a cold/stopped state.
+    # Stop a session's tmux window (or close one whose harness exited).
+    # The project stays in the list (it is owned by discovery); it simply
+    # returns to a cold/stopped state.
     def stop(name : String)
       session = find(name)
       raise "No session named '#{name}'" unless session
-      session.stop if session.running?
+      session.stop
+    end
+
+    # Choose the harness a project's agent runs in, from its next start.
+    def set_harness(name : String, kind : Harness::Kind) : Session
+      session = find(name)
+      raise "No session named '#{name}'" unless session
+      @config.set_harness(session.directory, kind)
+      session.harness = kind
+      session
     end
 
     def stop_all

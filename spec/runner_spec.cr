@@ -36,6 +36,31 @@ describe Aix::Runner do
     end
   end
 
+  it "doesn't register a program not named aix, such as a crystal eval's" do
+    with_tmpdir do |root|
+      with_state(root) do
+        Aix::Runner.register("/home/me/.cache/crystal/crystal-run-eval.tmp").should be_false
+        File.exists?(File.join(root, "dot-ai", "runners", "aix")).should be_false
+      end
+    end
+  end
+
+  it "finds the record of the session in a pane by its process, the newest open one" do
+    with_tmpdir do |root|
+      with_state(root) do
+        dir = File.join(root, "dot-ai", "sessions")
+        Dir.mkdir_p(dir)
+        File.write(File.join(dir, "old.session"), "root=/p\nagent=codex\nid=old\nby=aix\npid=4242\nstate=ended\n")
+        File.write(File.join(dir, "new.session"), "root=/p\nagent=codex\nid=new\nby=aix\npid=4242\nstate=idle\n")
+        record = Aix::Runner.record_in_pane(4242).not_nil!
+        record.id.should eq "new"
+        record.agent.should eq "codex"
+        record.state.should eq "idle"
+        Aix::Runner.record_in_pane(4343).should be_nil
+      end
+    end
+  end
+
   it "keys a record by the session id, made safe for a file name" do
     Aix::Runner.session_key("01a1-ce58/x y").should eq "01a1-ce58_x_y"
   end

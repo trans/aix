@@ -67,3 +67,32 @@ describe Aix::Bell do
     end
   end
 end
+
+describe "Aix::Bell, for Codex" do
+  # Codex 0.167.2's input line, as `capture-pane -e` gives it.
+  empty = "\e[1m›\e[0m \e[2mAsk Codex to do anything\e[0m"
+
+  it "sees an empty input line: the mark, the cursor after it, and only dim text" do
+    Aix::Bell.codex_prompt_empty?(empty, 2).should be_true
+    Aix::Bell.codex_prompt_empty?("\e[1m›\e[0m ", 2).should be_true
+  end
+
+  it "doesn't take a draft, which isn't dim, for empty" do
+    Aix::Bell.codex_prompt_empty?("\e[1m›\e[0m draft text", 2).should be_false
+    Aix::Bell.codex_prompt_empty?("\e[1m›\e[0m draft text", 12).should be_false
+  end
+
+  it "doesn't take a menu's entry after the same mark for an input line" do
+    Aix::Bell.codex_prompt_empty?("\e[36m› 1. Yes, proceed\e[39m", 2).should be_false
+  end
+
+  it "doesn't read a colour's numbers as dim" do
+    Aix::Bell.codex_prompt_empty?("\e[38;2;2;2;2m›\e[39m \e[38;2;246;226;183mtext\e[39m", 2).should be_false
+  end
+
+  it "holds with a reason of its own when there's no record yet" do
+    result, reason = Aix::Bell.decide(nil, user_typing: false, prompt_empty: true, unknown: "no record yet")
+    result.should eq Aix::Bell::Result::Held
+    reason.should eq "no record yet"
+  end
+end
