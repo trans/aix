@@ -1,6 +1,6 @@
 pkgbase = aix
 	pkgdesc = tmux-based manager for AI coding harnesses (Claude Code, Codex), with TUI, web, REPL and MCP modes
-	pkgver = 0.3.0
+	pkgver = 0.3.1
 	pkgrel = 1
 	url = https://github.com/trans/aix
 	arch = x86_64
@@ -16,7 +16,7 @@ pkgbase = aix
 	depends = libxml2
 	depends = sqlite
 	optdepends = claude-code: Claude Code, one of the harnesses aix runs
-	source = aix-0.3.0::git+https://github.com/trans/aix.git#tag=v0.3.0
+	source = aix-0.3.1::git+https://github.com/trans/aix.git#tag=v0.3.1
 	sha256sums = SKIP
 
 pkgname = aix

@@ -13,7 +13,7 @@ require "./aix/runner"
 require "./aix/conversations"
 
 module Aix
-  VERSION = "0.3.0"
+  VERSION = "0.3.1"
 
   def self.run
     if ARGV.first? == "tell"
