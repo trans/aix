@@ -1,13 +1,13 @@
 # Status
 
-*Updated 2026-11-13*
+*Updated 2026-11-14*
 
 Where Aix stands. The backlog, item by item, is `TODO.md` in the code repo;
 this note is the handoff, not a copy of it.
 
 ## On main, pushed
 
-Last tag: `v0.2.0` (2026-04-15). Since then:
+Last tag: `v0.3.0` (`7e9f693`, 2026-11-14). Since `v0.2.0` (2026-04-15):
 
 - Control API and MCP server (`f091df0`), the meta console's Leader
   routing (`d596a95`), `focus` / `set_leader` and the F9 return-to-Leader
@@ -24,16 +24,29 @@ Last tag: `v0.2.0` (2026-04-15). Since then:
   transcript to `--continue` to a new conversation; `aix --bridge`, `aix
   update` and the inotify watcher retired. 51 specs pass.
 
+- `74cd14e` (2026-11-14): Codex as well as Claude Code. A project with an
+  `AGENTS.md` and no `CLAUDE.md` runs Codex; `h` in the TUI (or `start`'s
+  `harness`) switches one, kept in the config by directory. Codex starts
+  as `codex --no-daemon`, resumes with `resume --last`. The bell rings it
+  from the dot-ai record naming its pane's process, at an input line with
+  only dim placeholder text after `›`. aix registers as the runner only
+  when the program is named `aix` (a `crystal eval` test once took its
+  place for a minute). 64 specs pass.
+
 Tested live: the bell and `aix tell` (@arcana and @chantest, both in aix,
-woke each other). The preview and exited windows were tested in a separate
-tmux server with a fake `claude`, not yet in the user's own session.
+woke each other); Codex's bell in a scratch project in a separate tmux
+server; the user opened onboard with the fixes in their own session ("it
+mostly works", the rest being Codex). Not yet tried there: Codex projects
+in the user's own session, and whether `resume --last` finds conversations
+started from VS Code.
 
 ## Next
 
 From `TODO.md`:
 
-1. Codex in aix: `codex --no-daemon` with `DOT_AI_BY=aix`, and the bell
-   for Codex from the dot-ai record's `state`.
+1. Codex's open ends (`TODO.md`): no ring before its first prompt (no
+   record yet), and an interrupted turn leaves its record `busy`, a
+   question for @tom.
 2. The preview: colour, and the list's ●/○ refreshed while the TUI is
    open. The Resume box may belong to the selected project.
 3. The lead's tools: processes under an agent's pane with their memory
