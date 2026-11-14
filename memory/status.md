@@ -7,7 +7,8 @@ this note is the handoff, not a copy of it.
 
 ## On main, pushed
 
-Last tag: `v0.3.0` (`7e9f693`, 2026-11-14). Since `v0.2.0` (2026-04-15):
+Last tag: `v0.3.1` (`3672845`, 2026-11-14). `v0.3.0` was `7e9f693`.
+Since `v0.2.0` (2026-04-15):
 
 - Control API and MCP server (`f091df0`), the meta console's Leader
   routing (`d596a95`), `focus` / `set_leader` and the F9 return-to-Leader
@@ -32,13 +33,23 @@ Last tag: `v0.3.0` (`7e9f693`, 2026-11-14). Since `v0.2.0` (2026-04-15):
   only dim placeholder text after `›`. aix registers as the runner only
   when the program is named `aix` (a `crystal eval` test once took its
   place for a minute). 64 specs pass.
+- 0.3.1 (2026-11-14): `cfc9049` fixes the bell while any window has
+  exited (`Tmux.window_pids` failed on a dead pane's empty pid, so `aix
+  tell <id>` found no window and answered 4; 0.3.0 has the bug).
+  `35b1062`: conversations open in other programs (`Conversations`:
+  Claude Code's `~/.claude/sessions/`, Codex's per-conversation locks
+  read through `/proc/locks`), marked `◐` in the TUI with where; aix
+  doesn't resume one another program holds (dot-ai's one runner per
+  session). The Resume box is gone, the user's design: Enter resumes, `n`
+  starts a new conversation. 72 specs pass.
 
 Tested live: the bell and `aix tell` (@arcana and @chantest, both in aix,
 woke each other); Codex's bell in a scratch project in a separate tmux
 server; the user opened onboard with the fixes in their own session ("it
-mostly works", the rest being Codex). Not yet tried there: Codex projects
-in the user's own session, and whether `resume --last` finds conversations
-started from VS Code.
+mostly works", the rest being Codex). With 0.3.0 onboard opened in Codex
+in the user's own session (2026-11-14), as `codex --no-daemon resume
+--last`, and resumed its conversation from VS Code (`01a13023…`, the
+newest of its two, both VS Code's): `--last` finds those.
 
 ## Next
 
