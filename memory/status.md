@@ -7,7 +7,8 @@ this note is the handoff, not a copy of it.
 
 ## On main, pushed
 
-Last tag: `v0.3.1` (`3672845`, 2026-11-14). `v0.3.0` was `7e9f693`.
+Last tag: `v0.3.2` (`84b9d73`, 2026-11-14). `v0.3.1` was `3672845`,
+`v0.3.0` `7e9f693`.
 Since `v0.2.0` (2026-04-15):
 
 - Control API and MCP server (`f091df0`), the meta console's Leader
@@ -42,6 +43,12 @@ Since `v0.2.0` (2026-04-15):
   doesn't resume one another program holds (dot-ai's one runner per
   session). The Resume box is gone, the user's design: Enter resumes, `n`
   starts a new conversation. 72 specs pass.
+- 0.3.2 (2026-11-14), `f9e86bf`: the web dashboard (Start, New) and the
+  lead's `start` (`resume`, default true) resume by default too. The
+  user wondered whether the lead's default should be the lead's to pick;
+  resume was agreed, for one meaning of "start" everywhere, with
+  `resume: false` for a task that needs no history. 73 specs pass. The
+  user expects a pause after this ("we might be good for a little bit").
 
 Tested live: the bell and `aix tell` (@arcana and @chantest, both in aix,
 woke each other); Codex's bell in a scratch project in a separate tmux
