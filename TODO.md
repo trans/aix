@@ -96,8 +96,12 @@ console.
       Windows get `remain-on-exit`, so the error stays on screen, and
       opening it again restarts it in the same window. Resume uses the
       session id's transcript, else `--continue`, else a new conversation.
+- [x] `r` refreshes the TUI (user, 2026-11-14): the projects, the list's
+      marks, what's open elsewhere and the preview, keeping the
+      selection. The list keeps its place after `d` and coming back from
+      an agent too.
 - [ ] The preview, next: colour (`capture-pane -e` and a parser for crt);
-      the list's running marks (●/○) refreshed while the TUI is open.
+      the list's marks updating by themselves.
 - [x] No Resume box (user, 2026-11-14): `Enter` resumes the last
       conversation (or starts one), `n` starts a new one. The box stayed
       ticked from one project to the next. The web dashboard (Start,

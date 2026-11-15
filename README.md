@@ -53,9 +53,11 @@ and the lead's `start` tool, do the same.
 The right side shows the selected project's screen as you move
 through the list: live for an agent that's running, and otherwise as it
 was when aix last saw it (when you left it, or when it was stopped). The
-screens are kept in `~/.local/state/aix/screens/`. Quitting the TUI (`q`)
-leaves the agents running in tmux, and `aix` picks them up again; `d`
-stops one.
+screens are kept in `~/.local/state/aix/screens/`. The list and its marks
+are as they were when it was drawn; `r` looks again (the projects, which
+agents run, which are open elsewhere, and the screen). Quitting the TUI
+(`q`) leaves the agents running in tmux, and `aix` picks them up again;
+`d` stops one.
 
 Each project runs Claude Code, or Codex if it has an `AGENTS.md` and no
 `CLAUDE.md`. `h` switches the selected project between the two, from its

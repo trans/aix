@@ -8,6 +8,10 @@ module Aix
 
     getter manager : SessionManager
 
+    # The project selected last, so the list keeps its place when it's
+    # drawn again: after a refresh, a stop, or coming back from an agent.
+    @selected_name : String? = nil
+
     def initialize(@manager : SessionManager)
     end
 
@@ -36,6 +40,9 @@ module Aix
           width: SIDEBAR_WIDTH,
           height: list_height,
           border: CRT::Border::Single)
+        if kept = @selected_name.try { |name| @manager.sessions.index { |s| s.name == name } }
+          list.selected = kept
+        end
 
         # -- Right panel: session detail --
         detail_x = SIDEBAR_WIDTH
@@ -92,11 +99,12 @@ module Aix
         # -- Footer bar --
         footer_y = sh - 1
         CRT::Label.new(screen, x: 0, y: footer_y, width: sw, height: 1,
-          text: " Enter:Open  n:New conversation  h:Harness  a:Add Root  d:Stop  q:Quit", style: CRT.theme.field)
+          text: " Enter:Open  n:New conversation  h:Harness  r:Refresh  a:Add Root  d:Stop  q:Quit", style: CRT.theme.field)
 
         update_detail.call(list.selected)
 
         list.on_change = ->(index : Int32) {
+          @selected_name = @manager.sessions[index]?.try(&.name)
           update_detail.call(index)
           nil
         }
@@ -145,6 +153,13 @@ module Aix
                 add_new = true unless screen.focused_widget.is_a?(CRT::Entry)
               elsif !event.ctrl? && event.char == "n"
                 open_action.call(true) unless screen.focused_widget.is_a?(CRT::Entry)
+              elsif !event.ctrl? && event.char == "r"
+                # Look again: the projects, which agents run, which are
+                # open elsewhere, and the screen.
+                unless screen.focused_widget.is_a?(CRT::Entry)
+                  @manager.refresh
+                  refresh = true
+                end
               elsif !event.ctrl? && event.char == "h"
                 # Switch the selected project between Claude Code and
                 # Codex, from its next start: not while its agent runs.
