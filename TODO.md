@@ -55,8 +55,15 @@ background for mail.
       stays with `AGENTS.md`; the choice is the person's.
 - [ ] Bell, untested live: the "user is typing in that pane" guard needs
       an attached client.
-- [ ] Bell, once the sidebar shares windows: `Tmux.pane_info` takes a
-      window's first pane, which has to be the agent's.
+- [x] An agent's pane is marked (`@aix-agent`, 2026-11-16), and the bell,
+      the preview and `send` use it: a pane added above it (`Ctrl-b *`,
+      `new-pane` in tmux 3.8, or a split) came first and was taken for
+      the agent's. `remain-on-exit` is on that pane only, so an added
+      pane closes when its shell exits (the user's snag, 2026-11-16).
+      Windows from older builds are marked when aix starts.
+- [x] aix's own status line (user, 2026-11-16): `aix · @name`, `F12`
+      (and `F9: @lead` once there's one), the pane's title and the time;
+      no numbered window list. aix no longer sets `history-limit`.
 
 ## Leader-as-UI (the primary interface)
 

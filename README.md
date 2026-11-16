@@ -42,7 +42,17 @@ tmux window `name` match.
 | `aix tell ID` | Ring one agent's bell now, by window name or session id (what dot-ai's carrier runs) |
 
 All modes share one tmux session, `aix`. `F12` detaches, and `F9` jumps
-back to the lead's window.
+back to the lead's window. aix sets that session's status line to say
+which agent you're in and those keys, with the pane's title and the time
+on the right (`aix · @name … F12: back to aix · F9: @lead "title" 08:07
+16-Nov-26`). tmux's numbered window list is left out, since the TUI is
+where to switch. The status line is the aix session's alone, and your
+scrollback (`history-limit`) is your own. `F12` and `F9` are tmux key
+bindings, though, so they work in any session on the same tmux server.
+
+An agent's pane is marked (`@aix-agent`), so aix finds it however the
+window is arranged. A pane you add to an agent's window (`Ctrl-b *`, a
+split) is an ordinary tmux pane, and closes when its shell exits.
 
 In the TUI, `Enter` goes to the selected project's agent, starting it if
 it isn't running: in its last conversation, or a new one if it has none

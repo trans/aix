@@ -4,24 +4,126 @@ module Aix
     SESSION = "aix"
     PLACEHOLDER_WINDOW = "__aix_placeholder__"
 
-    # Ensure the aix tmux session exists. Creates it if not.
-    # If no windows exist yet, creates a placeholder that new_window will replace.
+    # A user option on the pane an agent runs in, so aix finds it however
+    # the window's panes are arranged: a pane added above it (`split-window
+    # -b`, `new-pane`) comes first.
+    AGENT_MARK = "@aix-agent"
+
+    # A session option naming the lead's window, for the status line.
+    LEAD_OPTION = "@aix-lead"
+
+    # Ensure the aix tmux session exists, creating it if not (with a
+    # placeholder window that new_window replaces), and set it up.
     def self.ensure_session
-      return if session_exists?
-      # Start tmux server with clean env (no Claude nesting vars)
-      result = Process.run("env", ["-u", "CLAUDECODE", "-u", "CLAUDE_CODE_ENTRYPOINT",
-                                   "tmux", "new-session", "-d", "-s", SESSION,
-                                   "-n", PLACEHOLDER_WINDOW,
-                                   "-x", "#{cols}", "-y", "#{rows}"],
-                           error: Process::Redirect::Pipe)
-      raise "tmux new-session: failed" unless result.success?
-      # Bind F12 to detach (prefix-free, aix session only)
+      unless session_exists?
+        # Start tmux server with clean env (no Claude nesting vars)
+        result = Process.run("env", ["-u", "CLAUDECODE", "-u", "CLAUDE_CODE_ENTRYPOINT",
+                                     "tmux", "new-session", "-d", "-s", SESSION,
+                                     "-n", PLACEHOLDER_WINDOW,
+                                     "-x", "#{cols}", "-y", "#{rows}"],
+          error: Process::Redirect::Pipe)
+        raise "tmux new-session: failed" unless result.success?
+      end
+      configure_session
+    end
+
+    # The aix session's own settings, set each time, so a session made by
+    # an older aix gets them too. Only the aix session's: the person's
+    # other tmux sessions are left alone.
+    def self.configure_session
+      # Bind F12 to detach (prefix-free)
       run("bind-key", "-n", "F12", "detach-client")
-      # Enable mouse scrollback and generous history
       run("set-option", "-t", SESSION, "mouse", "on")
-      run("set-option", "-t", SESSION, "history-limit", "10000")
-      # Auto-close windows when process exits (no dead shell prompt)
+      # Scrollback is the person's own (`history-limit` in their tmux.conf).
+      Process.run("tmux", ["set-option", "-u", "-t", SESSION, "history-limit"], error: Process::Redirect::Close)
+      # A pane closes when its program exits, but for an agent's (`new_window`).
       run("set-option", "-t", SESSION, "remain-on-exit", "off")
+      status_line
+      mark_agent_panes
+    end
+
+    # The status line: which agent this is and how to get back, then the
+    # pane's title (the harness's, what it's doing) and the time. tmux's
+    # numbered list of windows is left out: the TUI is where to switch.
+    STATUS_LEFT  = " aix · @\#{=/40/…:window_name} "
+    STATUS_RIGHT = "F12: back to aix\#{?#{LEAD_OPTION}, · F9: @\#{#{LEAD_OPTION}},}  " \
+                   "\"\#{=21:pane_title}\" %H:%M %d-%b-%y "
+    STATUS_FORMAT = "\#[align=left range=left \#{E:status-left-style}]\#[push-default]" \
+                    "\#{T;=/\#{status-left-length}:status-left}\#[pop-default]\#[norange default]" \
+                    "\#[nolist align=right range=right \#{E:status-right-style}]\#[push-default]" \
+                    "\#{T;=/\#{status-right-length}:status-right}\#[pop-default]\#[norange default]"
+
+    private def self.status_line
+      run("set-option", "-t", SESSION, "status-left-length", "50")
+      run("set-option", "-t", SESSION, "status-left", STATUS_LEFT)
+      run("set-option", "-t", SESSION, "status-right-length", "90")
+      run("set-option", "-t", SESSION, "status-right", STATUS_RIGHT)
+      run("set-option", "-t", SESSION, "status-format[0]", STATUS_FORMAT)
+    end
+
+    # A pane of a window, as aix reads it.
+    record PaneRow, window : String, id : String, index : Int32, pid : Int64?, dead : Bool,
+      marked : Bool, start : String
+
+    # The panes of the aix session's windows.
+    def self.panes : Array(PaneRow)
+      format = "\#{window_name}\t\#{pane_id}\t\#{pane_index}\t\#{pane_pid}\t\#{pane_dead}\t" \
+               "\#{#{AGENT_MARK}}\t\#{pane_start_command}"
+      capture("list-panes", "-s", "-t", SESSION, "-F", format).lines.compact_map do |line|
+        fields = line.split('\t', 7)
+        next unless fields.size == 7
+        window, id, index, pid, dead, mark, start = fields
+        PaneRow.new(window, id, index.to_i? || 0, pid.to_i64?, dead == "1", mark == "1", start.strip)
+      end
+    rescue
+      [] of PaneRow
+    end
+
+    # Each window's agent pane: the one aix marked, else (a window from an
+    # aix before the mark) the one started as a harness, else the first.
+    def self.agent_panes : Hash(String, PaneRow)
+      panes.group_by(&.window).transform_values do |rows|
+        rows.find(&.marked) || rows.find { |row| harness_command?(row.start) } || rows.min_by(&.index)
+      end
+    end
+
+    # Window `name`'s agent pane.
+    def self.agent_pane(name : String) : PaneRow?
+      agent_panes[name]?
+    end
+
+    private def self.harness_command?(command : String) : Bool
+      program = command.lstrip('"').split(' ', 2).first? || return false
+      {"claude", "codex"}.includes?(File.basename(program))
+    end
+
+    # Mark, in windows an older aix made, the agent's pane, and move
+    # `remain-on-exit` from the window, where it kept any pane added to it
+    # (`new-pane`, a split) after its shell exited, to that pane alone.
+    private def self.mark_agent_panes
+      agent_panes.each do |window, pane|
+        next if pane.marked || window == PLACEHOLDER_WINDOW
+        Process.run("tmux", ["set-option", "-w", "-u", "-t", pane.id, "remain-on-exit"], error: Process::Redirect::Close)
+        Process.run("tmux", ["set-option", "-w", "-u", "-t", pane.id, "remain-on-exit-format"], error: Process::Redirect::Close)
+        program = File.basename(pane.start.lstrip('"').split(' ', 2).first? || "")
+        mark_agent(pane.id, program.empty? ? "its program" : program)
+      end
+    rescue
+      # Not marked: the first pane is taken as the agent's, as before.
+    end
+
+    # Make `pane` an agent's: marked, and kept with its last screen and a
+    # notice when `program` exits.
+    private def self.mark_agent(pane : String, program : String)
+      run("set-option", "-p", "-t", pane, AGENT_MARK, "1")
+      run("set-option", "-p", "-t", pane, "remain-on-exit", "on")
+      run("set-option", "-p", "-t", pane, "remain-on-exit-format", exited_notice(program))
+    end
+
+    # The target for window `name`'s agent pane: its id, or the window
+    # itself if it can't be read.
+    private def self.agent_target(name : String) : String
+      agent_pane(name).try(&.id) || "#{SESSION}:=#{name}"
     end
 
     def self.session_exists? : Bool
@@ -42,15 +144,8 @@ module Aix
     end
 
     private def self.window_state(name : String) : Symbol?
-      output = IO::Memory.new
-      result = Process.run("tmux", ["list-windows", "-t", SESSION, "-F", "\#{window_name}\t\#{pane_dead}"],
-        output: output, error: Process::Redirect::Close)
-      return nil unless result.success?
-      output.to_s.each_line do |line|
-        window, _, dead = line.partition('\t')
-        return dead.strip == "1" ? :dead : :running if window == name
-      end
-      nil
+      pane = agent_pane(name) || return nil
+      pane.dead ? :dead : :running
     end
 
     # What a window shows under its program's last screen when the program
@@ -72,7 +167,7 @@ module Aix
       # close the session, were it the last). A new one starts on a
       # placeholder, so `remain-on-exit` is on before the program starts,
       # however soon it exits.
-      pane = window_dead?(name) ? capture("list-panes", "-t", "#{SESSION}:=#{name}", "-F", "\#{pane_id}").lines.first.strip : nil
+      pane = agent_pane(name).try { |row| row.dead ? row.id : nil }
       unless pane
         err = IO::Memory.new
         created = IO::Memory.new
@@ -81,9 +176,8 @@ module Aix
           output: created, error: err)
         raise "tmux new-window: #{err.to_s.strip}" unless result.success?
         pane = created.to_s.strip
-        run("set-option", "-w", "-t", pane, "remain-on-exit", "on")
       end
-      run("set-option", "-w", "-t", pane, "remain-on-exit-format", exited_notice(command.first))
+      mark_agent(pane, command.first)
       respawn = ["respawn-pane", "-k", "-t", pane, "-c", directory]
       env.each { |key, value| respawn.concat(["-e", "#{key}=#{value}"]) }
       respawn << "--"
@@ -122,9 +216,11 @@ module Aix
       run("bind-key", "-n", key, *command)
     end
 
-    # (Re)bind RETURN_TO_LEADER_KEY to jump straight to the Leader's window.
+    # (Re)bind RETURN_TO_LEADER_KEY to jump straight to the Leader's window,
+    # and name it on the status line.
     def self.bind_return_to_leader(leader_window : String)
       bind_key(RETURN_TO_LEADER_KEY, "select-window", "-t", "#{SESSION}:=#{leader_window}")
+      run("set-option", "-t", SESSION, LEAD_OPTION, leader_window)
     end
 
     # Attach to the aix session. Blocks until the user detaches.
@@ -150,22 +246,22 @@ module Aix
 
     # Send keystrokes to a window's pane.
     def self.send_keys(name : String, keys : String)
-      run("send-keys", "-t", "#{SESSION}:=#{name}", keys, "Enter")
+      run("send-keys", "-t", agent_target(name), keys, "Enter")
     end
 
     # Send literal text to a window without pressing Enter.
     def self.send_literal(name : String, text : String)
-      run("send-keys", "-t", "#{SESSION}:=#{name}", "-l", text)
+      run("send-keys", "-t", agent_target(name), "-l", text)
     end
 
     # Send a named tmux key to a window.
     def self.send_key(name : String, key : String)
-      run("send-keys", "-t", "#{SESSION}:=#{name}", key)
+      run("send-keys", "-t", agent_target(name), key)
     end
 
     # Capture visible pane content. Optional line count scrolls back.
     def self.capture_pane(name : String, lines : Int32? = nil) : String
-      args = ["capture-pane", "-t", "#{SESSION}:=#{name}", "-p"]
+      args = ["capture-pane", "-t", agent_target(name), "-p"]
       if n = lines
         args += ["-S", "-#{n}"]
       end
@@ -183,7 +279,7 @@ module Aix
     # up into the history, so a screen's worth of history comes too, with
     # the blank lines between the output and the notice taken out.
     def self.capture_screen(name : String) : String?
-      target = "#{SESSION}:=#{name}"
+      target = agent_pane(name).try(&.id) || return nil
       dead, _, height = capture("display-message", "-p", "-t", target, "\#{pane_dead}\t\#{pane_height}")
         .strip.partition('\t')
       return capture("capture-pane", "-p", "-t", target) unless dead == "1"
@@ -210,12 +306,14 @@ module Aix
     # session someone is attached to), and where its cursor is.
     record PaneInfo, id : String, pid : Int64, focused : Bool, cursor_x : Int32, cursor_y : Int32
 
-    # The agent's pane in a window of the aix session (its first pane), or
-    # nil if there's no window by that exact name.
+    # The agent's pane in a window of the aix session (`agent_pane`), or nil
+    # if there's no window by that exact name, or its program has exited.
     def self.pane_info(window : String) : PaneInfo?
+      pane = agent_pane(window) || return nil
+      return nil if pane.dead
       format = "\#{pane_id}\t\#{pane_pid}\t\#{pane_active}\t\#{window_active}\t" \
                "\#{session_attached}\t\#{cursor_x}\t\#{cursor_y}"
-      line = capture("list-panes", "-t", "#{SESSION}:=#{window}", "-F", format).lines.first?
+      line = capture("display-message", "-p", "-t", pane.id, format).lines.first?
       return nil unless line
       id, pid, pane_active, window_active, attached, x, y = line.split('\t')
       focused = pane_active == "1" && window_active == "1" && attached.to_i > 0
@@ -224,17 +322,13 @@ module Aix
       nil
     end
 
-    # The windows of the aix session, with their first pane's process. A
+    # The windows of the aix session, with their agent pane's process. A
     # window whose program has exited has none, and isn't listed.
     def self.window_pids : Array({String, Int64})
-      capture("list-panes", "-s", "-t", SESSION, "-F", "\#{window_name}\t\#{pane_index}\t\#{pane_pid}\t\#{pane_dead}")
-        .lines.compact_map do |line|
-          name, index, pid, dead = line.split('\t')
-          next unless index == "0" && dead != "1"
-          pid.to_i64?.try { |number| {name, number} }
-        end
-    rescue
-      [] of {String, Int64}
+      agent_panes.compact_map do |name, pane|
+        next if pane.dead
+        pane.pid.try { |pid| {name, pid} }
+      end
     end
 
     # When a client attached to the aix session last had a key from the
