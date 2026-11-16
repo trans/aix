@@ -1,6 +1,6 @@
 # Status
 
-*Updated 2026-11-14*
+*Updated 2026-11-16*
 
 Where Aix stands. The backlog, item by item, is `TODO.md` in the code repo;
 this note is the handoff, not a copy of it.
@@ -49,6 +49,12 @@ Since `v0.2.0` (2026-04-15):
   resume was agreed, for one meaning of "start" everywhere, with
   `resume: false` for a task that needs no history. 73 specs pass. The
   user expects a pause after this ("we might be good for a little bit").
+- After 0.3.2, untagged: `3e374e6` (`r` refreshes the TUI, the list keeps
+  its place) and `8c6403b` (2026-11-16: the agent's pane is marked
+  `@aix-agent`, so a pane added by `Ctrl-b *` or a split isn't taken for
+  it, and only that pane stays after exiting; aix's own status line, no
+  window numbers; `history-limit` left to the person). The user, on the
+  bar: "Much better."
 
 Tested live: the bell and `aix tell` (@arcana and @chantest, both in aix,
 woke each other); Codex's bell in a scratch project in a separate tmux
