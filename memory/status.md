@@ -7,8 +7,8 @@ this note is the handoff, not a copy of it.
 
 ## On main, pushed
 
-Last tag: `v0.3.2` (`84b9d73`, 2026-11-14). `v0.3.1` was `3672845`,
-`v0.3.0` `7e9f693`.
+Last tag: `v0.4.0` (`34c7d01`, 2026-11-17, the user's call). `v0.3.2`
+was `84b9d73`, `v0.3.1` `3672845`, `v0.3.0` `7e9f693`.
 Since `v0.2.0` (2026-04-15):
 
 - Control API and MCP server (`f091df0`), the meta console's Leader
@@ -49,7 +49,7 @@ Since `v0.2.0` (2026-04-15):
   resume was agreed, for one meaning of "start" everywhere, with
   `resume: false` for a task that needs no history. 73 specs pass. The
   user expects a pause after this ("we might be good for a little bit").
-- After 0.3.2, untagged: `3e374e6` (`r` refreshes the TUI, the list keeps
+- In 0.4.0, after 0.3.2: `3e374e6` (`r` refreshes the TUI, the list keeps
   its place) and `8c6403b` (2026-11-16: the agent's pane is marked
   `@aix-agent`, so a pane added by `Ctrl-b *` or a split isn't taken for
   it, and only that pane stays after exiting; aix's own status line, no
