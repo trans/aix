@@ -1,6 +1,6 @@
 # Status
 
-*Updated 2026-11-16*
+*Updated 2026-11-17*
 
 Where Aix stands. The backlog, item by item, is `TODO.md` in the code repo;
 this note is the handoff, not a copy of it.
@@ -55,6 +55,15 @@ Since `v0.2.0` (2026-04-15):
   it, and only that pane stays after exiting; aix's own status line, no
   window numbers; `history-limit` left to the person). The user, on the
   bar: "Much better."
+- `e4b43ce` (2026-11-17): the file pane, the user's design ("each agent
+  session has an associated current browsing directory"). `F8` opens
+  and closes yazi on the agent window's right half; each agent keeps the
+  directory it was left in. The first build's issues, from the user:
+  no way to close it, too squeezed, and yazi's parent directory column
+  read as "a list of parent directories"; so `F8` closes, half width,
+  and aix's own yazi settings drop that column. The agent's title moved
+  to the bar's left, after the handle (the user's choice). Next: the
+  files the agent touched first (TODO).
 
 Tested live: the bell and `aix tell` (@arcana and @chantest, both in aix,
 woke each other); Codex's bell in a scratch project in a separate tmux
