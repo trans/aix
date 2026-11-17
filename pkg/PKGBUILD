@@ -8,7 +8,8 @@ url="https://github.com/trans/aix"
 license=('MIT')
 depends=('tmux' 'pcre2' 'libevent' 'gc' 'openssl' 'libxml2' 'sqlite')
 makedepends=('crystal' 'shards' 'git')
-optdepends=('claude-code: Claude Code, one of the harnesses aix runs')
+optdepends=('claude-code: Claude Code, one of the harnesses aix runs'
+            'yazi: the file pane (F8)')
 source=("$pkgname-$pkgver::git+https://github.com/trans/aix.git#tag=v$pkgver")
 sha256sums=('SKIP')
 

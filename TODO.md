@@ -63,7 +63,9 @@ background for mail.
       Windows from older builds are marked when aix starts.
 - [x] aix's own status line (user, 2026-11-16): `aix · @name`, `F12`
       (and `F9: @lead` once there's one), the pane's title and the time;
-      no numbered window list. aix no longer sets `history-limit`.
+      no numbered window list. aix no longer sets `history-limit`. The
+      title moved to the left, after the handle (user, 2026-11-17): the
+      agent pane's, whichever pane is in front, up to 50 characters.
 
 ## Leader-as-UI (the primary interface)
 
@@ -115,10 +117,16 @@ console.
       New) and the lead's `start` (`resume`, default true) too.
 - [x] Quitting the TUI leaves agents running (2026-11-12); it used to stop
       them all.
-- [ ] Sidebar file browser (user, 2026-11-11): get to the files agents
-      mention without navigating, since CLI links often don't work. Open
-      with `xdg-open`. List the files the agent touched first (from the
-      harness's session log), then `git status`, then the tree.
+- [x] The file pane (user, 2026-11-16, for the sidebar browser of
+      2026-11-11): `F8` opens yazi beside the agent, in its own pane of
+      the agent's window, so each agent has its own and keeps its
+      browsing directory (yazi's `--cwd-file`, one per agent). `F8`
+      opens and closes it (the user found no way to close it, at first);
+      half the window, and aix's own yazi settings
+      (`~/.config/aix/yazi/`) drop the parent directory's column.
+- [ ] The file pane, next: the files the agent touched first (from the
+      harness's session log), then `git status`, then the tree; a yazi
+      plugin, or a list aix writes.
 - [ ] The lead passes things on by mail, then rings the bell (user,
       2026-11-11). `send` (typing into a pane) is only for emergencies,
       which a busy agent sees the next time it looks up. When that's too

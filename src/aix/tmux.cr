@@ -12,6 +12,12 @@ module Aix
     # A session option naming the lead's window, for the status line.
     LEAD_OPTION = "@aix-lead"
 
+    # A user option on an agent window's file pane (`Files`), and the key
+    # that opens it.
+    FILES_MARK   = "@aix-files"
+    FILES_CLIENT = "@aix-files-client"
+    FILES_KEY    = "F8"
+
     # Ensure the aix tmux session exists, creating it if not (with a
     # placeholder window that new_window replaces), and set it up.
     def self.ensure_session
@@ -38,25 +44,43 @@ module Aix
       Process.run("tmux", ["set-option", "-u", "-t", SESSION, "history-limit"], error: Process::Redirect::Close)
       # A pane closes when its program exits, but for an agent's (`new_window`).
       run("set-option", "-t", SESSION, "remain-on-exit", "off")
+      bind_files_key
       status_line
       mark_agent_panes
     end
 
-    # The status line: which agent this is and how to get back, then the
-    # pane's title (the harness's, what it's doing) and the time. tmux's
-    # numbered list of windows is left out: the TUI is where to switch.
-    STATUS_LEFT  = " aix · @\#{=/40/…:window_name} "
-    STATUS_RIGHT = "F12: back to aix\#{?#{LEAD_OPTION}, · F9: @\#{#{LEAD_OPTION}},}  " \
-                   "\"\#{=21:pane_title}\" %H:%M %d-%b-%y "
+    # Bind FILES_KEY to `aix files <window>` (`Files.toggle`), in the aix
+    # session; anywhere else the key goes to the program as usual, since
+    # a binding holds for the whole tmux server. Only a program named
+    # `aix` binds it: aix's code run some other way (`crystal eval`, a
+    # spec) isn't one to run later.
+    private def self.bind_files_key
+      program = Process.executable_path || return
+      return unless File.basename(program) == "aix"
+      run("bind-key", "-n", FILES_KEY, "if-shell", "-F", "\#{==:\#{session_name},#{SESSION}}",
+        "run-shell -b \"'#{program}' files '\#{window_id}'\"", "send-keys #{FILES_KEY}")
+    end
+
+    # The status line: which agent this is and the title its harness gives
+    # its pane (what the conversation is about, and whether it's working),
+    # then the keys and the time (the user's layout, 2026-11-17). The title
+    # is the agent pane's, whichever pane is in front, and left out while
+    # it's tmux's default, the machine's name. tmux's numbered list of
+    # windows is left out: the TUI is where to switch.
+    STATUS_LEFT = " aix · @\#{=/40/…:window_name}" \
+                  "\#{P:\#{?\#{#{AGENT_MARK}},\#{?\#{==:\#{pane_title},\#{host}},, · \#{=/50/…:pane_title}},}} "
+    STATUS_RIGHT = "F12: back to aix · " \
+                   "\#{?\#{P:\#{?\#{#{FILES_MARK}},1,}},#{FILES_KEY}: close files,#{FILES_KEY}: files}" \
+                   "\#{?#{LEAD_OPTION}, · F9: @\#{#{LEAD_OPTION}},}  %H:%M %d-%b-%y "
     STATUS_FORMAT = "\#[align=left range=left \#{E:status-left-style}]\#[push-default]" \
                     "\#{T;=/\#{status-left-length}:status-left}\#[pop-default]\#[norange default]" \
                     "\#[nolist align=right range=right \#{E:status-right-style}]\#[push-default]" \
                     "\#{T;=/\#{status-right-length}:status-right}\#[pop-default]\#[norange default]"
 
     private def self.status_line
-      run("set-option", "-t", SESSION, "status-left-length", "50")
+      run("set-option", "-t", SESSION, "status-left-length", "110")
       run("set-option", "-t", SESSION, "status-left", STATUS_LEFT)
-      run("set-option", "-t", SESSION, "status-right-length", "90")
+      run("set-option", "-t", SESSION, "status-right-length", "80")
       run("set-option", "-t", SESSION, "status-right", STATUS_RIGHT)
       run("set-option", "-t", SESSION, "status-format[0]", STATUS_FORMAT)
     end
@@ -118,6 +142,71 @@ module Aix
       run("set-option", "-p", "-t", pane, AGENT_MARK, "1")
       run("set-option", "-p", "-t", pane, "remain-on-exit", "on")
       run("set-option", "-p", "-t", pane, "remain-on-exit-format", exited_notice(program))
+    end
+
+    # A pane of one window, as the file pane needs it.
+    record WindowPane, window : String, id : String, active : Bool, agent : Bool, files : Bool, path : String,
+      client : String = ""
+
+    # The panes of window `window`: its id (`@3`, as a key binding gives
+    # it) or its name in the aix session.
+    def self.window_panes(window : String) : Array(WindowPane)
+      target = window.starts_with?('@') ? window : "#{SESSION}:=#{window}"
+      format = "\#{window_name}\t\#{pane_id}\t\#{pane_active}\t\#{#{AGENT_MARK}}\t\#{#{FILES_MARK}}\t" \
+               "\#{#{FILES_CLIENT}}\t\#{pane_current_path}"
+      capture("list-panes", "-t", target, "-F", format).lines.compact_map do |line|
+        fields = line.split('\t', 7)
+        next unless fields.size == 7
+        name, id, active, agent, files, client, path = fields
+        WindowPane.new(name, id, active == "1", agent == "1", files == "1", path.strip, client)
+      end
+    rescue
+      [] of WindowPane
+    end
+
+    def self.select_pane(pane : String)
+      run("select-pane", "-t", pane)
+    end
+
+    # Open a file pane beside `agent_pane`: `command` in `directory`, with
+    # `env`, to its right, half the window, marked as the window's file
+    # pane, with the browser's id (`client`) for closing it. It's where the
+    # keys go next. Images pass through to the terminal, for the browser's
+    # previews.
+    def self.open_files_pane(agent_pane : String, directory : String, command : Array(String),
+                             env : Hash(String, String), client : String) : String
+      err = IO::Memory.new
+      created = IO::Memory.new
+      args = ["split-window", "-h", "-l", "50%", "-t", agent_pane, "-c", directory, "-P", "-F", "\#{pane_id}"]
+      env.each { |key, value| args.concat(["-e", "#{key}=#{value}"]) }
+      args << "--"
+      args.concat(command)
+      result = Process.run("tmux", args, output: created, error: err)
+      raise "tmux split-window: #{err.to_s.strip}" unless result.success?
+      pane = created.to_s.strip
+      run("set-option", "-p", "-t", pane, FILES_MARK, "1")
+      run("set-option", "-p", "-t", pane, FILES_CLIENT, client)
+      Process.run("tmux", ["set-option", "-p", "-t", pane, "allow-passthrough", "on"], error: Process::Redirect::Close)
+      pane
+    end
+
+    # Quit a browser in `pane` by its keys: Escape out of whatever it's
+    # doing, then `q`.
+    def self.quit_by_keys(pane : String)
+      run("send-keys", "-t", pane, "Escape")
+      sleep 200.milliseconds
+      run("send-keys", "-t", pane, "q")
+    rescue
+      # Gone already.
+    end
+
+    def self.pane_exists?(pane : String) : Bool
+      Process.run("tmux", ["display-message", "-p", "-t", pane, "\#{pane_id}"],
+        output: Process::Redirect::Close, error: Process::Redirect::Close).success?
+    end
+
+    def self.kill_pane(pane : String)
+      Process.run("tmux", ["kill-pane", "-t", pane], error: Process::Redirect::Close)
     end
 
     # The target for window `name`'s agent pane: its id, or the window

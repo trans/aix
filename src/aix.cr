@@ -11,6 +11,7 @@ require "./aix/mcp_server"
 require "./aix/bell"
 require "./aix/runner"
 require "./aix/conversations"
+require "./aix/files"
 
 module Aix
   VERSION = "0.3.2"
@@ -18,6 +19,11 @@ module Aix
   def self.run
     if ARGV.first? == "tell"
       exit tell(ARGV[1]?)
+    end
+
+    # The file pane's key runs this (`Files`).
+    if ARGV.first? == "files"
+      exit Files.toggle(ARGV[1]?)
     end
 
     if ARGV.includes?("--mcp")

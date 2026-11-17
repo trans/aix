@@ -16,6 +16,7 @@ pkgbase = aix
 	depends = libxml2
 	depends = sqlite
 	optdepends = claude-code: Claude Code, one of the harnesses aix runs
+	optdepends = yazi: the file pane (F8)
 	source = aix-0.3.2::git+https://github.com/trans/aix.git#tag=v0.3.2
 	sha256sums = SKIP
 

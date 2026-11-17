@@ -43,12 +43,35 @@ tmux window `name` match.
 
 All modes share one tmux session, `aix`. `F12` detaches, and `F9` jumps
 back to the lead's window. aix sets that session's status line to say
-which agent you're in and those keys, with the pane's title and the time
-on the right (`aix · @name … F12: back to aix · F9: @lead "title" 08:07
-16-Nov-26`). tmux's numbered window list is left out, since the TUI is
+which agent you're in, with the title its harness gives the conversation
+(Claude Code's starts with `✳` while it waits for you, and a spinner
+while it works), and on the right those keys and the time (`aix · @name ·
+✳ title … F12: back to aix · F8: files · F9: @lead 08:07 16-Nov-26`).
+tmux's numbered window list is left out, since the TUI is
 where to switch. The status line is the aix session's alone, and your
 scrollback (`history-limit`) is your own. `F12` and `F9` are tmux key
 bindings, though, so they work in any session on the same tmux server.
+
+### The file pane
+
+`F8` in an agent's window opens a file browser ([yazi](https://yazi-rs.github.io))
+on the right half, in the project's directory, for getting to the files
+an agent mentions when its links don't open. `F8` again closes it (so
+does `q` in yazi), and the status line says which `F8` will do. To move
+between the agent and its files with the pane open, click the one you
+want, or press `Ctrl-b o`.
+
+Each agent's window has its own file pane, so switching agents switches
+browsers, and each agent keeps its browsing directory: yazi saves where
+it was when it closes (`~/.local/state/aix/browse/`), and the next file
+pane there starts from it. yazi opens files with your desktop's default
+application. In other tmux sessions, `F8` goes to the program as usual.
+
+The file pane's yazi reads aix's own settings,
+`~/.config/aix/yazi/yazi.toml`, which aix writes once and leaves for you
+to change: two columns, the current directory and a preview of the
+selected file, without the parent directory's column yazi shows by
+default. Your yazi elsewhere keeps `~/.config/yazi`.
 
 An agent's pane is marked (`@aix-agent`), so aix finds it however the
 window is arranged. A pane you add to an agent's window (`Ctrl-b *`, a
@@ -165,7 +188,7 @@ alone. Claude Code warns about that option at every start.
 
 ## Building
 
-Requires Crystal 1.19.1 or later and tmux.
+Requires Crystal 1.19.1 or later and tmux, and yazi for the file pane.
 
 ```sh
 shards install
