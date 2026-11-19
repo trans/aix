@@ -1,6 +1,6 @@
 # Status
 
-*Updated 2026-11-17*
+*Updated 2026-11-18*
 
 Where Aix stands. The backlog, item by item, is `TODO.md` in the code repo;
 this note is the handoff, not a copy of it.
@@ -64,6 +64,14 @@ Since `v0.2.0` (2026-04-15):
   and aix's own yazi settings drop that column. The agent's title moved
   to the bar's left, after the handle (the user's choice). Next: the
   files the agent touched first (TODO).
+- After 0.4.0, untagged: `1b3f96e` (2026-11-18). The user's "loose
+  cursor" was tmux's copy mode (entered by the mouse wheel or a drag,
+  since Claude Code doesn't take the mouse); the bar now says so. It hid
+  a bell bug: the bell rang a pane in copy mode and its keys went to the
+  mode, so the notice was lost; it now leaves the mode first (tested in
+  an isolated server: keys sent in copy mode never reached the program).
+  Also `aix --version`, and unknown options refused. The user, after:
+  "Aix is working well", "good work".
 
 Tested live: the bell and `aix tell` (@arcana and @chantest, both in aix,
 woke each other); Codex's bell in a scratch project in a separate tmux
