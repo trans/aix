@@ -40,6 +40,7 @@ tmux window `name` match.
 | `aix --web` | A web dashboard (`--host`, `--port`; default `127.0.0.1:9292`) |
 | `aix --mcp` | The control tools over MCP (stdio), for the lead |
 | `aix tell ID` | Ring one agent's bell now, by window name or session id (what dot-ai's carrier runs) |
+| `aix --version` | aix's version (`--help` lists the options; aix refuses one it doesn't know) |
 
 All modes share one tmux session, `aix`. `F12` detaches, and `F9` jumps
 back to the lead's window. aix sets that session's status line to say
@@ -48,7 +49,12 @@ which agent you're in, with the title its harness gives the conversation
 while it works), and on the right those keys and the time (`aix · @name ·
 ✳ title … F12: back to aix · F8: files · F9: @lead 08:07 16-Nov-26`).
 tmux's numbered window list is left out, since the TUI is
-where to switch. The status line is the aix session's alone, and your
+where to switch.
+
+Scrolling up with the mouse wheel, or dragging to select text, puts a
+pane in tmux's copy mode, where the cursor moves freely over the pane
+and keys don't reach the agent. The status line then says `copy mode:
+Esc leaves`. The status line is the aix session's alone, and your
 scrollback (`history-limit`) is your own. `F12` and `F9` are tmux key
 bindings, though, so they work in any session on the same tmux server.
 
@@ -152,7 +158,9 @@ the bell rings only when all of these hold:
   end-of-turn hook instead. During Claude Code's startup dialogs there's
   no session file, and Codex's hooks write no record until its first
   prompt, so until then the bell holds.
-- You aren't typing in that pane right now.
+- You aren't typing in that pane right now. A pane left scrolled back
+  (in copy mode) is taken out of it first, as Esc would, since the
+  notice would otherwise go to copy mode and never reach the agent.
 - The cursor is in the input box, and the box is empty (Codex's grey
   placeholder counts as empty). A draft of yours is never touched.
 

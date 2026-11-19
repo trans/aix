@@ -69,7 +69,11 @@ module Aix
     # windows is left out: the TUI is where to switch.
     STATUS_LEFT = " aix · @\#{=/40/…:window_name}" \
                   "\#{P:\#{?\#{#{AGENT_MARK}},\#{?\#{==:\#{pane_title},\#{host}},, · \#{=/50/…:pane_title}},}} "
-    STATUS_RIGHT = "F12: back to aix · " \
+    # While the pane in front is in a tmux mode (copy mode, entered by
+    # scrolling back with the mouse wheel or dragging to select), it says
+    # so: keys go to the mode then, not the program, until Esc.
+    STATUS_RIGHT = "\#{?pane_in_mode,\#[reverse] \#{s/-/ /:pane_mode}: Esc leaves \#[noreverse]  ,}" \
+                   "F12: back to aix · " \
                    "\#{?\#{P:\#{?\#{#{FILES_MARK}},1,}},#{FILES_KEY}: close files,#{FILES_KEY}: files}" \
                    "\#{?#{LEAD_OPTION}, · F9: @\#{#{LEAD_OPTION}},}  %H:%M %d-%b-%y "
     STATUS_FORMAT = "\#[align=left range=left \#{E:status-left-style}]\#[push-default]" \
@@ -393,7 +397,11 @@ module Aix
     # A pane's state, as the bell needs it: which pane, its process, whether
     # it has the user's keys (the active pane of the active window of a
     # session someone is attached to), and where its cursor is.
-    record PaneInfo, id : String, pid : Int64, focused : Bool, cursor_x : Int32, cursor_y : Int32
+    # A pane as the bell reads it. `cursor_x` and `cursor_y` are its
+    # program's cursor, and `mode` the tmux mode it's in (`copy-mode` while
+    # scrolled back, or none, ""), which leaves those as they are.
+    record PaneInfo, id : String, pid : Int64, focused : Bool, cursor_x : Int32, cursor_y : Int32,
+      mode : String = ""
 
     # The agent's pane in a window of the aix session (`agent_pane`), or nil
     # if there's no window by that exact name, or its program has exited.
@@ -401,14 +409,23 @@ module Aix
       pane = agent_pane(window) || return nil
       return nil if pane.dead
       format = "\#{pane_id}\t\#{pane_pid}\t\#{pane_active}\t\#{window_active}\t" \
-               "\#{session_attached}\t\#{cursor_x}\t\#{cursor_y}"
+               "\#{session_attached}\t\#{cursor_x}\t\#{cursor_y}\t\#{?pane_in_mode,\#{pane_mode},}"
       line = capture("display-message", "-p", "-t", pane.id, format).lines.first?
       return nil unless line
-      id, pid, pane_active, window_active, attached, x, y = line.split('\t')
+      id, pid, pane_active, window_active, attached, x, y, mode = line.split('\t', 8)
       focused = pane_active == "1" && window_active == "1" && attached.to_i > 0
-      PaneInfo.new(id, pid.to_i64, focused, x.to_i, y.to_i)
+      PaneInfo.new(id, pid.to_i64, focused, x.to_i, y.to_i, mode.strip)
     rescue
       nil
+    end
+
+    # Take `pane` out of the tmux mode it's in (copy mode, say), as Esc
+    # would. Whether it's out.
+    def self.leave_mode(pane : String) : Bool
+      Process.run("tmux", ["send-keys", "-t", pane, "-X", "cancel"], error: Process::Redirect::Close)
+      capture("display-message", "-p", "-t", pane, "\#{pane_in_mode}").strip == "0"
+    rescue
+      false
     end
 
     # The windows of the aix session, with their agent pane's process. A

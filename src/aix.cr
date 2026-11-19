@@ -16,6 +16,22 @@ require "./aix/files"
 module Aix
   VERSION = "0.4.0"
 
+  USAGE = <<-TEXT
+    Usage: aix [--repl | --web [--host HOST] [--port PORT] | --mcp]
+           aix tell ID
+           aix --version | --help
+
+      (none)    the TUI: the projects, starting and stopping agents
+      --repl    a line-based console with the same controls
+      --web     a web dashboard (default 127.0.0.1:9292)
+      --mcp     the control tools over MCP (stdio), for the lead
+      tell ID   ring one agent's bell (what dot-ai's carrier runs)
+    TEXT
+
+  # The options aix takes, and those of them followed by a value.
+  OPTIONS       = {"--repl", "--web", "--mcp", "--host", "--port", "--version", "-V", "--help", "-h"}
+  VALUE_OPTIONS = {"--host", "--port"}
+
   def self.run
     if ARGV.first? == "tell"
       exit tell(ARGV[1]?)
@@ -24,6 +40,24 @@ module Aix
     # The file pane's key runs this (`Files`).
     if ARGV.first? == "files"
       exit Files.toggle(ARGV[1]?)
+    end
+
+    if ARGV.includes?("--version") || ARGV.includes?("-V")
+      puts "aix #{VERSION}"
+      return
+    end
+
+    if ARGV.includes?("--help") || ARGV.includes?("-h")
+      puts USAGE
+      return
+    end
+
+    # Anything else it doesn't know is refused, rather than taken as no
+    # option at all, which would start the TUI.
+    if problem = argument_problem(ARGV)
+      STDERR.puts "aix: #{problem}"
+      STDERR.puts USAGE
+      exit 2
     end
 
     if ARGV.includes?("--mcp")
@@ -154,6 +188,24 @@ module Aix
         end
       end
     end
+  end
+
+  # What's wrong with `args`, if anything: an option not in OPTIONS
+  # (`--host=HOST` counts as `--host`), anything that isn't an option but
+  # for the value after one of VALUE_OPTIONS, or one of those without its
+  # value.
+  def self.argument_problem(args : Array(String)) : String?
+    index = 0
+    while arg = args[index]?
+      name = arg.split('=', 2).first
+      return "unknown option '#{arg}'" unless OPTIONS.includes?(name)
+      if VALUE_OPTIONS.includes?(name)
+        value = arg.includes?('=') ? arg.split('=', 2)[1] : args[index += 1]?
+        return "#{name} needs a value" if value.nil? || value.empty? || value.starts_with?('-')
+      end
+      index += 1
+    end
+    nil
   end
 
   private def self.option_value(flag : String) : String?

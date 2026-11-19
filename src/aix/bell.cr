@@ -20,7 +20,9 @@ module Aix
   #    no such file, dot-ai's record of the session says `idle`; its hooks
   #    write the record at the session's first prompt, so until then the
   #    bell holds;
-  # 2. the user isn't typing in that pane right now; and
+  # 2. the user isn't typing in that pane right now (a pane left scrolled
+  #    back, in tmux's copy mode, is taken out of it first, since the
+  #    notice's keys would go to the mode); and
   # 3. the cursor is in the input box, and the box is empty. Claude Code's
   #    is the line between two horizontal rules (where menus that use the
   #    same mark aren't), with nothing but the prompt mark before the
@@ -96,6 +98,12 @@ module Aix
         unknown: unknown)
       return {result, reason} unless result.rung?
 
+      # In a tmux mode (copy mode, after scrolling back), the keys would go
+      # to the mode and never reach the agent. The user isn't typing there
+      # (`decide`), so leave it, as Esc would.
+      unless pane.mode.empty? || Tmux.leave_mode(pane.id)
+        return {Result::Held, "its pane is in tmux's #{pane.mode}, which aix couldn't leave"}
+      end
       Tmux.type_line(pane.id, text)
       mark_rung(window)
       {Result::Rung, "typed the notice"}

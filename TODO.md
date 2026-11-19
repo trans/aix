@@ -117,6 +117,13 @@ console.
       New) and the lead's `start` (`resume`, default true) too.
 - [x] Quitting the TUI leaves agents running (2026-11-12); it used to stop
       them all.
+- [x] Copy mode (the user's "loose cursor", 2026-11-18): scrolling back
+      with the wheel, or dragging, puts a pane in tmux's copy mode, and
+      nothing said so. The status line now does (`copy mode: Esc
+      leaves`), and the bell leaves the mode before typing: its keys had
+      gone to copy mode, and the notice was lost.
+- [x] `aix --version`, `--help`, and an unknown option refused (it had
+      started the TUI), 2026-11-18.
 - [x] The file pane (user, 2026-11-16, for the sidebar browser of
       2026-11-11): `F8` opens yazi beside the agent, in its own pane of
       the agent's window, so each agent has its own and keeps its
