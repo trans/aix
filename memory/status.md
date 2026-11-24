@@ -1,6 +1,6 @@
 # Status
 
-*Updated 2026-11-18*
+*Updated 2026-11-24*
 
 Where Aix stands. The backlog, item by item, is `TODO.md` in the code repo;
 this note is the handoff, not a copy of it.
@@ -72,6 +72,27 @@ Since `v0.2.0` (2026-04-15):
   an isolated server: keys sent in copy mode never reached the program).
   Also `aix --version`, and unknown options refused. The user, after:
   "Aix is working well", "good work".
+- `ad16257` (2026-11-24): typing leaves copy mode in the aix session
+  (the user still stumbled into it); other sessions keep copy mode's
+  keys. Untagged.
+
+## Open: the terminal as aix's face (2026-11-24)
+
+The user's quirks with tmux: copy mode, its mouse menus, and the agent
+list and file pane not staying visible. They asked whether a terminal
+with vertical tabs and a file sidebar could replace tmux, leaving aix
+smaller. Found: kitty has vertical tabs (0.48+, `tab_bar_edge`) and a
+documented remote control (`kitten @`), but no file browser (yazi in a
+split); Tabby has side tabs but is Electron and has no remote control of
+its own; Ashy Terminal (Python, VTE) has a file panel but no vertical
+tabs. Without tmux, aix loses agents outliving the terminal, running
+with no window (web, the lead's `start`), attaching from elsewhere, the
+bell's typing guard, and headless testing. abduco/dtach/shpool keep
+agents running but keep no screen, so the bell's empty-prompt check and
+the preview go. My suggestion: keep tmux as hidden plumbing (a session
+per agent, its UI off), kitty as the face (a tab per agent, yazi split);
+unknown: scrollback through tmux. **Undecided**: the user is thinking on
+it ("kitty still doesn't have the file browser though").
 
 Tested live: the bell and `aix tell` (@arcana and @chantest, both in aix,
 woke each other); Codex's bell in a scratch project in a separate tmux
