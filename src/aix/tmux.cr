@@ -45,8 +45,68 @@ module Aix
       # A pane closes when its program exits, but for an agent's (`new_window`).
       run("set-option", "-t", SESSION, "remain-on-exit", "off")
       bind_files_key
+      bind_typing_in_copy_mode
       status_line
       mark_agent_panes
+    end
+
+    # The keys that, typed in copy mode in the aix session, leave it and go
+    # to the program: the printable characters, Space, Backspace and Enter.
+    # Arrows, Page Up and Down, Ctrl-keys and the mouse keep scrolling and
+    # selecting, and Esc leaves without typing.
+    TYPING_KEYS = (33..126).map(&.chr.to_s) + ["Space", "BSpace", "Enter"]
+
+    # A server option saying copy mode's keys are bound as below, and how
+    # (COPY_TYPING_VERSION), so they're bound once per tmux server.
+    COPY_TYPING_MARK    = "@aix-copy-typing"
+    COPY_TYPING_VERSION = "1"
+
+    # Make typing in copy mode reach the program, in the aix session (the
+    # user, 2026-11-24: scrolling back with the mouse wheel, or dragging,
+    # puts a pane in copy mode, where keys did nothing until Esc). A key
+    # binding holds for the whole tmux server, so each key keeps its own
+    # meaning in the person's other sessions. Only copy mode's emacs keys
+    # (tmux's default): with `mode-keys vi`, letters are how one moves.
+    private def self.bind_typing_in_copy_mode
+      mark = capture("show-options", "-sqv", COPY_TYPING_MARK).strip rescue ""
+      return if mark == COPY_TYPING_VERSION
+      config = copy_typing_config(copy_mode_bindings)
+      path = File.tempname("aix-copy-typing", ".conf")
+      File.write(path, config)
+      begin
+        run("source-file", path)
+      ensure
+        File.delete?(path)
+      end
+      run("set-option", "-s", COPY_TYPING_MARK, COPY_TYPING_VERSION)
+    rescue
+      # Copy mode stays as tmux has it.
+    end
+
+    # Copy mode's key bindings (emacs keys): each key's command.
+    def self.copy_mode_bindings : Hash(String, String)
+      capture("list-keys", "-T", "copy-mode", "-F", "\#{key_string}\t\#{key_command}").lines.compact_map do |line|
+        key, _, command = line.partition('\t')
+        {key, command.strip} unless key.empty?
+      end.to_h
+    rescue
+      {} of String => String
+    end
+
+    # The tmux configuration binding TYPING_KEYS in copy mode: in the aix
+    # session, leave copy mode and type the key; elsewhere, what the key
+    # did before (`bindings`), if anything. A key already bound by aix is
+    # left as it is.
+    def self.copy_typing_config(bindings : Hash(String, String)) : String
+      condition = "\#{==:\#{session_name},#{SESSION}}"
+      TYPING_KEYS.compact_map do |key|
+        before = bindings[key]?
+        next if before.try(&.includes?(condition))
+        quoted = key == "'" ? %("'") : "'#{key}'"
+        typed = key.size == 1 ? "send-keys -l #{quoted}" : "send-keys #{quoted}"
+        otherwise = before ? " { #{before} }" : ""
+        "bind-key -T copy-mode #{quoted} if-shell -F '#{condition}' { send-keys -X cancel ; #{typed} }#{otherwise}"
+      end.join("\n") + "\n"
     end
 
     # Bind FILES_KEY to `aix files <window>` (`Files.toggle`), in the aix
@@ -71,8 +131,11 @@ module Aix
                   "\#{P:\#{?\#{#{AGENT_MARK}},\#{?\#{==:\#{pane_title},\#{host}},, · \#{=/50/…:pane_title}},}} "
     # While the pane in front is in a tmux mode (copy mode, entered by
     # scrolling back with the mouse wheel or dragging to select), it says
-    # so: keys go to the mode then, not the program, until Esc.
-    STATUS_RIGHT = "\#{?pane_in_mode,\#[reverse] \#{s/-/ /:pane_mode}: Esc leaves \#[noreverse]  ,}" \
+    # so, and how to leave: in copy mode with emacs keys, typing leaves it
+    # too (`bind_typing_in_copy_mode`).
+    STATUS_RIGHT = "\#{?pane_in_mode,\#[reverse] " \
+                   "\#{?\#{&&:\#{==:\#{pane_mode},copy-mode},\#{==:\#{mode-keys},emacs}}," \
+                   "copy mode: type or Esc to leave,\#{s/-/ /:pane_mode}: Esc leaves} \#[noreverse]  ,}" \
                    "F12: back to aix · " \
                    "\#{?\#{P:\#{?\#{#{FILES_MARK}},1,}},#{FILES_KEY}: close files,#{FILES_KEY}: files}" \
                    "\#{?#{LEAD_OPTION}, · F9: @\#{#{LEAD_OPTION}},}  %H:%M %d-%b-%y "

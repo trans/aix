@@ -122,6 +122,14 @@ console.
       nothing said so. The status line now does (`copy mode: Esc
       leaves`), and the bell leaves the mode before typing: its keys had
       gone to copy mode, and the notice was lost.
+- [x] Typing leaves copy mode (user, 2026-11-24: "I constantly stumble
+      into" it): in the aix session, printable keys, Space, Backspace
+      and Enter leave it and reach the agent; other sessions keep copy
+      mode's own keys (bound once per server, `@aix-copy-typing`).
+- [ ] The user is weighing a terminal with vertical tabs (kitty) as the
+      face, with tmux as hidden plumbing (2026-11-24): one tmux session
+      per agent, one kitty tab per agent, yazi in a split. Unknown:
+      scrollback through tmux. Undecided; the user is thinking on it.
 - [x] `aix --version`, `--help`, and an unknown option refused (it had
       started the TUI), 2026-11-18.
 - [x] The file pane (user, 2026-11-16, for the sidebar browser of

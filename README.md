@@ -52,9 +52,13 @@ tmux's numbered window list is left out, since the TUI is
 where to switch.
 
 Scrolling up with the mouse wheel, or dragging to select text, puts a
-pane in tmux's copy mode, where the cursor moves freely over the pane
-and keys don't reach the agent. The status line then says `copy mode:
-Esc leaves`. The status line is the aix session's alone, and your
+pane in tmux's copy mode, where the cursor moves freely over the pane.
+In the aix session, typing leaves it: a letter, digit, punctuation,
+Space, Backspace or Enter goes to the agent as usual. Arrows, Page
+Up/Down, Ctrl-keys and the mouse still scroll and select, and Esc leaves
+without typing. The status line says `copy mode: type or Esc to leave`
+meanwhile. In your other tmux sessions copy mode's keys are as they were
+(with tmux's vi keys, `mode-keys vi`, aix leaves copy mode alone). The status line is the aix session's alone, and your
 scrollback (`history-limit`) is your own. `F12` and `F9` are tmux key
 bindings, though, so they work in any session on the same tmux server.
 
