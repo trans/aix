@@ -7,8 +7,10 @@ this note is the handoff, not a copy of it.
 
 ## On main, pushed
 
-Last tag: `v0.4.0` (`34c7d01`, 2026-11-17, the user's call). `v0.3.2`
-was `84b9d73`, `v0.3.1` `3672845`, `v0.3.0` `7e9f693`.
+Last tag: `v0.5.0` (`88af26f`, 2026-11-25, the user's call): the web
+page and message box, the web server guarded, copy mode, exact tmux
+targets. `v0.4.0` was `34c7d01`, `v0.3.2`
+`84b9d73`, `v0.3.1` `3672845`, `v0.3.0` `7e9f693`.
 Since `v0.2.0` (2026-04-15):
 
 - Control API and MCP server (`f091df0`), the meta console's Leader
@@ -96,7 +98,7 @@ Since `v0.2.0` (2026-04-15):
   isolated server, hooks off). Also fixed: tmux targets were bare `aix`,
   taken first for a window named `aix`, so new windows would fail once
   this project's window is in the session; now `=aix:`. Codex in the
-  box untested. Untagged.
+  box untested. In 0.5.0.
 
 ## Open: the terminal as aix's face (2026-11-24)
 
