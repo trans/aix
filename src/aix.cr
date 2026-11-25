@@ -15,7 +15,7 @@ require "./aix/files"
 require "./aix/web_auth"
 
 module Aix
-  VERSION = "0.4.0"
+  VERSION = "0.5.0"
 
   USAGE = <<-TEXT
     Usage: aix [--repl | --web [--host HOST] [--port PORT] | --mcp]
