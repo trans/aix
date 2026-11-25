@@ -126,6 +126,16 @@ console.
       into" it): in the aix session, printable keys, Space, Backspace
       and Enter leave it and reach the agent; other sessions keep copy
       mode's own keys (bound once per server, `@aix-copy-typing`).
+- [x] The web dashboard accepted typing into agents from any web page
+      (no check of `Origin`, no secret): guarded now (`WebAuth`,
+      2026-11-24): secret cookie, `Origin` and `Host` checks, no static
+      files, a content policy on the page.
+- [x] The web page, stage 2 (user, 2026-11-24): agents | conversation
+      (Claude Code's transcript, rendered, followed live) | files.
+- [ ] The web page, next: a live terminal (tmux's control mode streamed
+      to xterm.js, kept in aix, not from a CDN), typing from the page;
+      Codex conversations (its rollout files); then a native window
+      (a webview).
 - [ ] The user is weighing a terminal with vertical tabs (kitty) as the
       face, with tmux as hidden plumbing (2026-11-24): one tmux session
       per agent, one kitty tab per agent, yazi in a split. Unknown:

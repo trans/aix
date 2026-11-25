@@ -37,7 +37,7 @@ tmux window `name` match.
 |---|---|
 | `aix` | The TUI: the projects, starting and stopping agents, switching to one |
 | `aix --repl` | A line-based console with the same controls |
-| `aix --web` | A web dashboard (`--host`, `--port`; default `127.0.0.1:9292`) |
+| `aix --web` | The web page (`--host`, `--port`; default `127.0.0.1:9292`), below |
 | `aix --mcp` | The control tools over MCP (stdio), for the lead |
 | `aix tell ID` | Ring one agent's bell now, by window name or session id (what dot-ai's carrier runs) |
 | `aix --version` | aix's version (`--help` lists the options; aix refuses one it doesn't know) |
@@ -111,6 +111,29 @@ When an agent's harness exits (or fails to start), its window stays,
 showing its last screen and a line saying it exited, rather than tmux
 moving you to another agent's window. `F12` takes you back to the TUI,
 where `Enter` starts it again.
+
+### The web page
+
+`aix --web` serves a page with three columns: the agents on the left,
+with the TUI's marks and each running agent's title; the selected
+agent's conversation in the middle; and its project's files on the
+right, where a file opens in the middle (markdown rendered). The
+conversation is read from the transcript Claude Code keeps
+(`~/.claude/projects/`), so it shows the messages' own markdown rather
+than the screen they were drawn on, and it follows the transcript as the
+agent works. Tool calls fold away under a line saying what each does.
+Codex conversations aren't shown yet. Start, New and Stop work as in the
+TUI; Terminal opens the first dashboard's view of the agent's screen
+(also at `/classic`), until the page has a terminal of its own.
+
+The page can type into agents, so it's guarded. aix prints its address
+when it starts, with a secret in it (`http://127.0.0.1:9292/?token=…`).
+Opening that sets a cookie and moves on to the address without it; the
+secret is kept in `~/.local/state/aix/web-token`, readable only by you,
+so the address stays the same from start to start. Requests without the
+cookie, from another site (`Origin`), or by another name for the address
+(`Host`, which stops DNS rebinding) are refused, and the page runs no
+script but its own.
 
 ### Open elsewhere
 

@@ -183,6 +183,24 @@ module Aix
       agent_panes[name]?
     end
 
+    # Each window's agent title: the one its harness gave its pane (what
+    # the conversation is about, and whether it's working), unless it's
+    # still tmux's default, the machine's name.
+    def self.agent_titles : Hash(String, String)
+      format = "\#{window_name}\t\#{#{AGENT_MARK}}\t\#{pane_index}\t\#{host}\t\#{pane_title}"
+      rows = capture("list-panes", "-s", "-t", SESSION, "-F", format).lines.compact_map do |line|
+        fields = line.split('\t', 5)
+        fields.size == 5 ? fields : nil
+      end
+      rows.group_by(&.[0]).compact_map do |window, panes|
+        pane = panes.find { |fields| fields[1] == "1" } || panes.min_by { |fields| fields[2].to_i? || 0 }
+        title = pane[4].strip
+        {window, title} unless title.empty? || title == pane[3]
+      end.to_h
+    rescue
+      {} of String => String
+    end
+
     private def self.harness_command?(command : String) : Bool
       program = command.lstrip('"').split(' ', 2).first? || return false
       {"claude", "codex"}.includes?(File.basename(program))

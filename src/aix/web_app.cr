@@ -1,6 +1,11 @@
 require "html"
 require "json"
 require "kemal"
+require "./web_auth"
+require "./web_page"
+require "./transcript"
+require "./project_files"
+require "./conversations"
 
 module Aix
   module WebApp
@@ -10,12 +15,110 @@ module Aix
     PREVIEW_LINES = 12
     SNAPSHOT_INTERVAL = 300.milliseconds
 
+    # How often a conversation's transcript is read for new entries, and
+    # how often aix looks again at which transcript it is.
+    CONVERSATION_INTERVAL = 500.milliseconds
+    CONVERSATION_LOOK     = 2.seconds
+
     @@manager : SessionManager?
     @@lock = Mutex.new
 
+    # The page: agents, conversation, files (`WebPage`).
     get "/" do |env|
+      security_headers(env)
+      env.response.content_type = "text/html; charset=utf-8"
+      WebPage::HTML
+    end
+
+    get "/app.js" do |env|
+      security_headers(env)
+      env.response.content_type = "text/javascript; charset=utf-8"
+      WebPage::JS
+    end
+
+    get "/app.css" do |env|
+      security_headers(env)
+      env.response.content_type = "text/css; charset=utf-8"
+      WebPage::CSS
+    end
+
+    # The first dashboard, with its terminal snapshots, until the page
+    # has a terminal of its own.
+    get "/classic" do |env|
       env.response.content_type = "text/html"
       dashboard_page
+    end
+
+    # The agents, as the page lists them.
+    get "/api/agents" do |env|
+      elsewhere = Conversations.elsewhere
+      titles = Tmux.agent_titles
+      agents = with_lock do
+        manager.sessions.map { |session| agent_payload(session, elsewhere, titles) }
+      end
+      json_response(env, {agents: agents})
+    end
+
+    # A folder of an agent's project (`?path=`, relative to it).
+    get "/api/agents/:name/files" do |env|
+      directory = with_lock { manager.find(env.params.url["name"]).try(&.directory) }
+      next json_response(env, {error: "No such agent"}, 403) unless directory
+      begin
+        json_response(env, {items: ProjectFiles.list(directory, env.params.query["path"]? || "")})
+      rescue ex : ProjectFiles::OutsideProject
+        # 403, not 404: Kemal puts its own page in place of a 404's body.
+        json_response(env, {error: ex.message}, 403)
+      end
+    end
+
+    # A file of an agent's project (`?path=`), to show.
+    get "/api/agents/:name/file" do |env|
+      directory = with_lock { manager.find(env.params.url["name"]).try(&.directory) }
+      next json_response(env, {error: "No such agent"}, 403) unless directory
+      begin
+        json_response(env, ProjectFiles.show(directory, env.params.query["path"]? || ""))
+      rescue ex : ProjectFiles::OutsideProject
+        # 403, not 404: Kemal puts its own page in place of a 404's body.
+        json_response(env, {error: ex.message}, 403)
+      end
+    end
+
+    # An agent's conversation, from its transcript: what's there (the end
+    # of it), then each entry as it's written. When the agent moves to
+    # another conversation, the page starts again (`reset`).
+    ws "/ws/agents/:name/conversation" do |socket, env|
+      name = env.params.url["name"]
+      closed = false
+      socket.on_close { closed = true }
+      spawn do
+        follower : Transcript::Follower? = nil
+        path : String? = nil
+        first = true
+        looked = Time.instant - 1.minute
+        until closed
+          begin
+            if Time.instant - looked > CONVERSATION_LOOK
+              looked = Time.instant
+              session = with_lock { manager.find(name) }
+              found = session.try { |current| Transcript.path_for(current) }
+              if first || found != path
+                first = false
+                path = found
+                follower = found ? Transcript::Follower.new(found) : nil
+                note = session ? conversation_note(session, follower) : "No agent named '#{name}'."
+                socket.send({type: "reset", note: note}.to_json)
+              end
+            end
+            if current = follower
+              entries = current.read
+              socket.send({type: "entries", entries: entries}.to_json) unless entries.empty?
+            end
+          rescue
+            break
+          end
+          sleep CONVERSATION_INTERVAL
+        end
+      end
     end
 
     get "/sessions/:name" do |env|
@@ -188,9 +291,19 @@ module Aix
 
     def run(host : String, port : Int32)
       Tmux.ensure_session
+      auth = WebAuth.new(WebAuth.load_token, host, port)
       config = Kemal.config
+      # Every request goes through `WebAuth` first: pages, the API and the
+      # WebSockets alike.
+      config.add_handler(auth)
+      # Nothing is served from a `public/` folder where aix was started.
+      config.serve_static = false
       config.host_binding = host
       config.port = port
+      puts "aix web: open #{auth.address}"
+      unless auth.loopback?
+        puts "aix web: listening beyond this machine (#{host}), over plain HTTP: only its secret guards it."
+      end
       Kemal.run
     end
 
@@ -200,6 +313,57 @@ module Aix
 
     private def with_lock(&)
       @@lock.synchronize { yield }
+    end
+
+    # The page's own files may load only from aix, and run no script but
+    # its own (the conversation's HTML is markdown in safe mode, but this
+    # holds even if something got past that).
+    private def security_headers(env)
+      host = env.request.headers["Host"]? || ""
+      env.response.headers["Content-Security-Policy"] =
+        "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; " \
+        "connect-src 'self' ws://#{host}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+      env.response.headers["X-Content-Type-Options"] = "nosniff"
+      env.response.headers["Referrer-Policy"] = "no-referrer"
+      env.response.headers["Cache-Control"] = "no-cache"
+    end
+
+    # An agent as the page lists it, with the TUI's marks: ● running in
+    # aix, ◐ open in another program, ○ not started, ✕ stopped.
+    private def agent_payload(session : Session, elsewhere : Hash(String, Array(Conversations::Open)),
+                              titles : Hash(String, String))
+      running = session.running?
+      mark = if running
+               "●"
+             elsif !Conversations.in(elsewhere, session.directory).empty?
+               "◐"
+             elsif session.cold?
+               "○"
+             else
+               "✕"
+             end
+      {
+        name:      session.name,
+        level:     session.level,
+        parent:    session.parent,
+        directory: session.directory.sub(/\A#{Regex.escape(Path.home.to_s)}/, "~"),
+        harness:   session.harness.label,
+        running:   running,
+        state:     session.state.to_s.downcase,
+        mark:      mark,
+        title:     running ? titles[session.name]? : nil,
+      }
+    end
+
+    # What the page says above a conversation, or in place of one.
+    private def conversation_note(session : Session, follower : Transcript::Follower?) : String?
+      if follower
+        follower.cut? ? "Earlier messages aren't shown." : nil
+      elsif session.harness.codex?
+        "Codex conversations aren't shown here yet: Terminal shows its screen."
+      else
+        "No conversation yet."
+      end
     end
 
     private def request_payload(env) : Hash(String, JSON::Any)

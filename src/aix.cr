@@ -12,6 +12,7 @@ require "./aix/bell"
 require "./aix/runner"
 require "./aix/conversations"
 require "./aix/files"
+require "./aix/web_auth"
 
 module Aix
   VERSION = "0.4.0"
@@ -135,7 +136,6 @@ module Aix
     strip_option("--host")
     strip_option("--port")
 
-    puts "Starting AIX web on http://#{host}:#{port}"
     WebApp.run(host, port)
   end
 
