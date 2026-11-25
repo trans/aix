@@ -99,8 +99,11 @@ Since `v0.2.0` (2026-04-15):
   taken first for a window named `aix`, so new windows would fail once
   this project's window is in the session; now `=aix:`. Codex in the
   box untested. In 0.5.0.
+- `25acf98` (2026-11-25): agents in kitty tabs, kept alive by abduco,
+  instead of tmux windows (below, "The terminal as aix's face"). The web
+  page's further stages were dropped the same day (the user). Untagged.
 
-## Open: the terminal as aix's face (2026-11-24)
+## The terminal as aix's face: kitty (2026-11-24, decided 2026-11-25)
 
 The user's quirks with tmux: copy mode, its mouse menus, and the agent
 list and file pane not staying visible. They asked whether a terminal
@@ -135,8 +138,23 @@ content in issues and PRs, code, comments and descriptions, so nothing
 of ours can go upstream. The user filed a request for vertical tabs in
 their own words: pop-os/cosmic-term#966 (2026-11-25), asking whether a
 patch would be welcome. A patch upstream would have to be the user's
-own work, without an AI's help. **Open**: fork for ourselves, or kitty unmodified (my
-recommendation, with yazi in a split).
+own work, without an AI's help.
+
+**Decided** (the user, 2026-11-25): kitty unmodified, with abduco
+rather than tmux underneath ("let's give kitty and abduco a try"), after
+the user questioned tmux being the only way to keep agents alive. Ghostty
+was ruled out too: upstream closed vertical tabs (discussion #2549,
+March 2026); its AI policy allows disclosed AI help. Tested by hand
+first, real Claude Code in an off-screen kitty: it survived its tab
+closing and kitty quitting; a reattached tab is blank until the agent's
+terminal is resized by a row and back (abduco has no redraw); titles and
+OSC 7501 status pass through abduco (tmux drops unknown codes); get-text
+gives the cursor for the bell. **Built in `25acf98`**, beside tmux
+(`"terminal": "kitty"`, set in the user's config; kitty.conf has
+`allow_remote_control socket-only` and `listen_on`). Not yet used for
+real by the user. Open: F8 in kitty, `aix tell` across both while
+agents are in each, Claude Code's status in its tab, tmux removed if
+kitty wins.
 
 Tested live: the bell and `aix tell` (@arcana and @chantest, both in aix,
 woke each other); Codex's bell in a scratch project in a separate tmux
