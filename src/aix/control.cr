@@ -1,6 +1,6 @@
 require "json"
 require "./session_manager"
-require "./tmux"
+require "./term"
 
 module Aix
   # Programmatic control surface over SessionManager. Unlike the REPL/TUI/web
@@ -15,7 +15,7 @@ module Aix
     getter manager : SessionManager
 
     def initialize(@manager : SessionManager = SessionManager.new)
-      Tmux.ensure_session
+      Term.ensure
     end
 
     # All discovered projects with their live state.
@@ -85,7 +85,7 @@ module Aix
     def send_text(name : String, text : String)
       session = require_session(name)
       raise "'#{name}' is not running" unless session.running?
-      Tmux.send_keys(session.name, text)
+      Term.send_line(session.name, text)
       {ok: true, name: session.name}
     end
 
@@ -94,7 +94,7 @@ module Aix
     def peek(name : String, lines : Int32? = nil) : String
       session = require_session(name)
       raise "'#{name}' is not running" unless session.running?
-      Tmux.capture_pane(session.name, lines)
+      Term.capture(session.name, lines)
     end
 
     # Switch the attached client's view to a project's pane ("patch me over
@@ -102,7 +102,7 @@ module Aix
     def focus(name : String)
       session = require_session(name.lstrip('@'))
       raise "'#{name}' is not running" unless session.running?
-      Tmux.select_window(session.name)
+      Term.focus(session.name, session.directory)
       info(session)
     end
 
@@ -112,7 +112,7 @@ module Aix
       session = require_session(name.lstrip('@'))
       @manager.config.leader = session.name
       @manager.config.save
-      Tmux.bind_return_to_leader(session.name)
+      Tmux.bind_return_to_leader(session.name) unless Term.kitty?
       {leader: session.name, return_key: Tmux::RETURN_TO_LEADER_KEY}
     end
 

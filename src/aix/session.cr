@@ -1,5 +1,5 @@
 require "json"
-require "./tmux"
+require "./term"
 require "./harness"
 require "./runner"
 require "./screens"
@@ -31,7 +31,7 @@ module Aix
     end
 
     def state : SessionState
-      if Tmux.window_exists?(@name)
+      if Term.running?(@name)
         SessionState::Running
       else
         @started ? SessionState::Stopped : SessionState::Cold
@@ -56,7 +56,7 @@ module Aix
       command = Harness.command(@harness, args, @mail_channel)
       env = Harness.session_env(command)
       Runner.register if env["DOT_AI_BY"]? == Runner::NAME
-      Tmux.new_window(@name, @directory, command, env)
+      Term.start(@name, @directory, command, env)
       @started = true
       capture_claude_session_id if @harness.claude?
     end
@@ -109,12 +109,12 @@ module Aix
       @claude_session_id = best_id if best_id
     end
 
-    # Stop the session by killing the tmux window, keeping its last screen
+    # Stop the session, closing its window or tab, keeping its last screen
     # for the TUI's preview first.
     def stop
-      return unless running? || Tmux.window_dead?(@name)
+      return unless running? || Term.exited?(@name)
       Screens.capture(@name)
-      Tmux.kill_window(@name)
+      Term.stop(@name)
     end
 
     @started = false

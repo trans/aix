@@ -1,6 +1,6 @@
 require "json"
 require "./harness"
-require "./tmux"
+require "./term"
 
 module Aix
   # The conversations open in other programs than aix, by project
@@ -25,7 +25,7 @@ module Aix
     # The conversations open outside aix's windows, by project directory
     # (symbolic links resolved).
     def self.elsewhere : Hash(String, Array(Open))
-      in_aix = Tmux.window_pids.map(&.[1]).to_set
+      in_aix = Term.agent_pids.map(&.[1]).to_set
       found = Hash(String, Array(Open)).new { |hash, key| hash[key] = [] of Open }
       (claude_open + codex_open).each do |directory, open|
         next if in_aix.includes?(open.pid) || in_aix.includes?(Harness.parent_pid(open.pid) || 0_i64)

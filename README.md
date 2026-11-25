@@ -112,6 +112,41 @@ showing its last screen and a line saying it exited, rather than tmux
 moving you to another agent's window. `F12` takes you back to the TUI,
 where `Enter` starts it again.
 
+### In kitty, instead of tmux
+
+aix can run each agent in a tab of [kitty](https://sw.kovidgoyal.net/kitty/)
+instead of a tmux window, with the tabs listed down the side. Each agent
+runs in an [abduco](https://github.com/martanne/abduco) session, which
+keeps it going when its tab closes or kitty quits, the way tmux kept it
+before. abduco draws nothing of its own, so there's no status line or copy
+mode in the way, and kitty's own scrollback and selection work as usual.
+It needs kitty 0.48 or later (for tabs on the side), abduco, and in
+`~/.config/kitty/kitty.conf`:
+
+```
+allow_remote_control socket-only
+listen_on unix:${XDG_RUNTIME_DIR}/kitty
+tab_bar_edge left
+tab_title_max_lines 2
+```
+
+Remote control lets aix open, label, read and type into tabs, over a
+socket only you can use. Then, in `~/.config/aix/config.json`,
+`"terminal": "kitty"`, and run `aix` in a kitty tab. `Enter` starts the
+selected agent in a new tab, or brings its tab to the front, and aix
+stays in its own tab. Each agent's tab is labelled with its handle above
+the title its harness gives it (a small watcher aix writes,
+`~/.config/aix/kitty/aix_watcher.py`). Close an agent's tab and the agent
+goes on (its mark stays `●`); `Enter` opens a tab on it again, and has it
+redraw its screen. `d` stops it. When an agent exits, its tab stays with
+its last screen and a shell.
+
+The mail bell works the same way, reading and typing through kitty, with
+two differences: kitty doesn't say when you last pressed a key, so the
+bell goes by the empty input box alone, and an agent with no tab open
+isn't rung (there's no screen to check), so it hears at its next turn's
+end. The file pane (`F8`) is tmux's alone for now.
+
 ### The web page
 
 `aix --web` serves a page with three columns: the agents on the left,
@@ -232,7 +267,8 @@ alone. Claude Code warns about that option at every start.
 
 ## Building
 
-Requires Crystal 1.19.1 or later and tmux, and yazi for the file pane.
+Requires Crystal 1.19.1 or later and tmux (or kitty and abduco, above),
+and yazi for the file pane.
 
 ```sh
 shards install
