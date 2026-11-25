@@ -100,10 +100,13 @@ Since `v0.2.0` (2026-04-15):
   this project's window is in the session; now `=aix:`. Codex in the
   box untested. In 0.5.0.
 - `25acf98` (2026-11-25): agents in kitty tabs, kept alive by abduco,
-  instead of tmux windows (below, "The terminal as aix's face"). The web
-  page's further stages were dropped the same day (the user). Untagged.
+  instead of tmux windows (below, "The terminal as aix's face"); tried
+  and reverted the same day. The web page's further stages were set
+  aside the same day (the user: not "worth the trouble"), before kitty
+  was tried; with kitty dropped, the user wants to "keep trying to work
+  what we have".
 
-## The terminal as aix's face: kitty (2026-11-24, decided 2026-11-25)
+## The terminal as aix's face: kitty tried and dropped (2026-11-24 to 2026-11-25)
 
 The user's quirks with tmux: copy mode, its mouse menus, and the agent
 list and file pane not staying visible. They asked whether a terminal
@@ -149,12 +152,17 @@ first, real Claude Code in an off-screen kitty: it survived its tab
 closing and kitty quitting; a reattached tab is blank until the agent's
 terminal is resized by a row and back (abduco has no redraw); titles and
 OSC 7501 status pass through abduco (tmux drops unknown codes); get-text
-gives the cursor for the bell. **Built in `25acf98`**, beside tmux
-(`"terminal": "kitty"`, set in the user's config; kitty.conf has
-`allow_remote_control socket-only` and `listen_on`). Not yet used for
-real by the user. Open: F8 in kitty, `aix tell` across both while
-agents are in each, Claude Code's status in its tab, tmux removed if
-kitty wins.
+gives the cursor for the bell. Built in `25acf98`, beside tmux.
+
+**Dropped** (the user, 2026-11-25, after trying it with a real agent):
+"drop kitty. let's just keep trying to work what we have I guess". Their
+objection: "the side bar is a TUI": kitty draws its tab list in its own
+character cells, so styling can tidy it but never make it a real side
+panel. Also, a line break in the tab label showed as a literal `\n` in
+the desktop's title for the window. The code is reverted (it's in
+`25acf98` if ever wanted); the user's aix setting and kitty's remote
+control lines were removed. Not tried: Tabby (Electron), which may have
+tabs on the side. aix stays on tmux.
 
 Tested live: the bell and `aix tell` (@arcana and @chantest, both in aix,
 woke each other); Codex's bell in a scratch project in a separate tmux
