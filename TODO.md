@@ -143,10 +143,12 @@ console.
       (its rollout files); then a native window (a webview).
 - [ ] Codex in the message box: untested. Its empty-input check is the
       bell's, but whether it takes a bracketed paste whole isn't known.
-- [ ] The user is weighing a terminal with vertical tabs (kitty) as the
-      face, with tmux as hidden plumbing (2026-11-24): one tmux session
-      per agent, one kitty tab per agent, yazi in a split. Unknown:
-      scrollback through tmux. Undecided; the user is thinking on it.
+- [-] Agents in kitty tabs, kept alive by abduco, instead of tmux
+      windows: built (`25acf98`), tried, and dropped the same day (the
+      user, 2026-11-25: "drop kitty"), and reverted. kitty draws its tab
+      list in its character cells, a TUI rather than a real side panel.
+      Back to tmux. COSMIC Terminal was ruled out by System76's no-AI
+      policy, Ghostty by its closed vertical tabs (discussion #2549).
 - [x] `aix --version`, `--help`, and an unknown option refused (it had
       started the TUI), 2026-11-18.
 - [x] The file pane (user, 2026-11-16, for the sidebar browser of
