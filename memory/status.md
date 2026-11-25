@@ -87,6 +87,16 @@ Since `v0.2.0` (2026-04-15):
   stages, agreed: a live terminal in the page (tmux control mode to
   xterm.js, kept in aix) and typing from it; Codex conversations; a
   native window (webview). Untagged.
+- `f285ddf` (2026-11-25): writing to an agent from the page (the user:
+  "use a textarea, and then send it at once"). A message is pasted whole
+  (bracketed paste), then Enter, only at an empty input box; otherwise
+  the page shows the agent's screen and keys, and what's written is
+  typed as keys (the user asked whether menus needed handling: no, "1",
+  Enter does). Tested with real Claude Code (Haiku, scratch folder,
+  isolated server, hooks off). Also fixed: tmux targets were bare `aix`,
+  taken first for a window named `aix`, so new windows would fail once
+  this project's window is in the session; now `=aix:`. Codex in the
+  box untested. Untagged.
 
 ## Open: the terminal as aix's face (2026-11-24)
 
