@@ -132,10 +132,17 @@ console.
       files, a content policy on the page.
 - [x] The web page, stage 2 (user, 2026-11-24): agents | conversation
       (Claude Code's transcript, rendered, followed live) | files.
+- [x] Writing to an agent from the page (user, 2026-11-25: "you can use
+      a textarea, and then send it at once"): a message, pasted whole,
+      when its input box is empty; else its screen and keys, for menus
+      and prompts. Tested with Claude Code: a two-line message arrived
+      as one; the trust question and a multiple-choice question
+      answered from the page, the second with its own words.
 - [ ] The web page, next: a live terminal (tmux's control mode streamed
-      to xterm.js, kept in aix, not from a CDN), typing from the page;
-      Codex conversations (its rollout files); then a native window
-      (a webview).
+      to xterm.js, kept in aix, not from a CDN); Codex conversations
+      (its rollout files); then a native window (a webview).
+- [ ] Codex in the message box: untested. Its empty-input check is the
+      bell's, but whether it takes a bracketed paste whole isn't known.
 - [ ] The user is weighing a terminal with vertical tabs (kitty) as the
       face, with tmux as hidden plumbing (2026-11-24): one tmux session
       per agent, one kitty tab per agent, yazi in a split. Unknown:

@@ -80,22 +80,12 @@ module Aix
       end
       return {Result::Rung, "rung moments ago"} if recently_rung?(window)
 
-      record = Runner.record_in_pane(pane.pid)
-      if codex?(pane.pid, record)
-        status = record.try(&.state)
-        prompt_empty = codex_prompt_empty?(Tmux.pane_line_styled(pane.id, pane.cursor_y), pane.cursor_x)
-        unknown = "no dot-ai record for it yet (Codex's hooks write one at its first prompt)"
-      else
-        status = Harness.claude_session_in_pane(pane.pid).try(&.status)
-        lines = Tmux.pane_lines(pane.id, pane.cursor_y - 1, pane.cursor_y + 1)
-        prompt_empty = prompt_empty?(lines, pane.cursor_x)
-        unknown = "no Claude Code status for it (a startup dialog, or not Claude Code)"
-      end
+      input = input_state(pane)
       result, reason = decide(
-        status: status,
+        status: input.status,
         user_typing: pane.focused && user_active?,
-        prompt_empty: prompt_empty,
-        unknown: unknown)
+        prompt_empty: input.prompt_empty,
+        unknown: input.unknown)
       return {result, reason} unless result.rung?
 
       # In a tmux mode (copy mode, after scrolling back), the keys would go
@@ -107,6 +97,26 @@ module Aix
       Tmux.type_line(pane.id, text)
       mark_rung(window)
       {Result::Rung, "typed the notice"}
+    end
+
+    # Where an agent's input stands: its session's status (Claude Code's
+    # own, or dot-ai's record of it for Codex; nil, with `unknown` saying
+    # why, when there's none), and whether its input box is empty with the
+    # cursor in it. The bell's checks, and the web page's.
+    record InputState, status : String?, prompt_empty : Bool, unknown : String, codex : Bool
+
+    def self.input_state(pane : Tmux::PaneInfo) : InputState
+      record = Runner.record_in_pane(pane.pid)
+      if codex?(pane.pid, record)
+        InputState.new(record.try(&.state),
+          codex_prompt_empty?(Tmux.pane_line_styled(pane.id, pane.cursor_y), pane.cursor_x),
+          "no dot-ai record for it yet (Codex's hooks write one at its first prompt)", true)
+      else
+        lines = Tmux.pane_lines(pane.id, pane.cursor_y - 1, pane.cursor_y + 1)
+        InputState.new(Harness.claude_session_in_pane(pane.pid).try(&.status),
+          prompt_empty?(lines, pane.cursor_x),
+          "no Claude Code status for it (a startup dialog, or not Claude Code)", false)
+      end
     end
 
     # Whether the pane runs Codex: its own process is `codex`, or dot-ai's

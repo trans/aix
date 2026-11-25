@@ -39,6 +39,20 @@ module Aix
               </div>
               <div id="conversation" class="pane"></div>
               <div id="file" class="pane" hidden></div>
+              <div id="composer">
+                <div id="screen-strip" hidden>
+                  <pre id="screen"></pre>
+                  <div id="keys" class="keys"></div>
+                </div>
+                <div class="compose-row">
+                  <textarea id="message" rows="3"></textarea>
+                  <button id="send">Send</button>
+                </div>
+                <div class="compose-foot">
+                  <span id="compose-hint"></span>
+                  <button id="screen-toggle" class="link"></button>
+                </div>
+              </div>
             </section>
             <aside id="files-panel">
               <h2>Files</h2>
@@ -121,6 +135,9 @@ module Aix
       table { border-collapse: collapse; }
       th, td { border: 1px solid var(--border); padding: 0.25rem 0.6rem; }
       blockquote { margin-left: 0; padding-left: 0.9rem; border-left: 3px solid var(--border); color: var(--muted); }
+      details.summary { margin-top: 0; margin-bottom: 1rem; color: var(--muted); font-style: italic; }
+      details.summary > summary { cursor: pointer; }
+      details.summary > .msg { font-style: normal; color: var(--text); margin-top: 0.6rem; padding-left: 1rem; border-left: 2px solid var(--border); }
       details.tool { margin-top: 0; margin-bottom: 0.5rem; font-size: 0.88em; color: var(--muted); }
       details.tool > summary { cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       details.tool .tool-name { color: var(--accent); font-weight: 600; }
@@ -135,12 +152,32 @@ module Aix
       .tree .dir:not(.open) > ul { display: none; }
       .tree .label.current { background: var(--raised); outline: 1px solid var(--accent); }
       .error { color: var(--danger); }
+      #composer { border-top: 1px solid var(--border); padding: 0.6rem 1.5rem 0.4rem; background: var(--panel); }
+      #composer > * { max-width: 46rem; margin-left: auto; margin-right: auto; }
+      #screen { max-height: 18rem; margin-top: 0; margin-bottom: 0.5rem; font-size: 0.8em; line-height: 1.3; background: var(--bg); }
+      .keys { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.5rem; }
+      .keys button { min-width: 2.2rem; padding: 0.15rem 0.5rem; }
+      .compose-row { display: flex; gap: 0.5rem; }
+      textarea {
+        flex: 1; resize: vertical; min-height: 3.4rem; max-height: 40vh;
+        font: inherit; color: var(--text); background: var(--bg);
+        border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.6rem;
+      }
+      textarea:focus { outline: none; border-color: var(--accent); }
+      #send { align-self: stretch; min-width: 5rem; }
+      .compose-foot { display: flex; justify-content: space-between; gap: 1rem; min-height: 1.4em; margin-top: 0.25rem; font-size: 0.8em; color: var(--muted); }
+      button.link { background: none; border: none; padding: 0; color: var(--accent); font-size: inherit; }
+      button:disabled { opacity: 0.45; cursor: default; }
       CSS
 
     JS = <<-'JS'
       "use strict";
       const $ = (selector) => document.querySelector(selector);
-      const state = { agents: [], selected: null, socket: null, tools: new Map(), title: "" };
+      const state = {
+        agents: [], selected: null, socket: null, tools: new Map(), title: "",
+        // The agent's input (`Sender.screen`), and whether its screen is shown when it needn't be.
+        screen: { mode: "off", waiting: false, busy: false, screen: "" }, showScreen: false,
+      };
 
       // An element, with its attributes and its children (strings become text).
       function el(tag, attributes = {}, ...children) {
@@ -214,6 +251,68 @@ module Aix
         }
         actions.append(el("a", { class: "button", href: `/sessions/${encodeURIComponent(agent.name)}`, target: "_blank",
           title: "Its terminal (a snapshot view, for now)" }, "Terminal"));
+        renderComposer();
+      }
+
+      // The message box: a message, sent whole, when the agent's input box
+      // is empty; else keys, with its screen shown, for a menu or a prompt.
+      function renderComposer() {
+        const agent = selectedAgent();
+        const input = state.screen;
+        const running = Boolean(agent && agent.running && input.mode !== "off");
+        const keys = input.mode === "keys";
+        const message = $("#message");
+        message.disabled = !running;
+        $("#send").disabled = !running;
+        $("#send").textContent = keys ? "Type" : "Send";
+        message.placeholder = !running ? "Start the agent to write to it."
+          : keys ? "Typed into it as keys, without Enter: an answer's number, or your own words. Then Enter."
+          : `Write to @${agent.name}. Ctrl+Enter sends.`;
+        $("#compose-hint").textContent = !running ? ""
+          : input.waiting ? "It's waiting on your answer: use the keys above, or type your answer, then Enter."
+          : keys ? "Its input box isn't empty, or it's showing something else: see its screen above."
+          : input.busy ? "It's working: a message now waits for its turn to end." : "";
+        $("#screen-strip").hidden = !(running && (keys || state.showScreen));
+        const screen = $("#screen");
+        screen.textContent = input.screen;
+        screen.scrollTop = screen.scrollHeight;
+        const toggle = $("#screen-toggle");
+        toggle.hidden = !running || keys;
+        toggle.textContent = state.showScreen ? "Hide its screen" : "Show its screen";
+      }
+
+      async function post(name, what, payload) {
+        try {
+          await getJSON(agentURL(name, what), {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+          });
+          notice("");
+          return true;
+        } catch (error) {
+          notice(error.message);
+          return false;
+        }
+      }
+
+      async function send() {
+        const agent = selectedAgent();
+        const message = $("#message");
+        if (!agent || message.disabled) return;
+        const keys = state.screen.mode === "keys";
+        const text = message.value;
+        if (!(keys ? text : text.trim())) return;
+        // Kept unless it went: a refusal leaves the message to send again.
+        if (await post(agent.name, keys ? "/type" : "/send", { text })) message.value = "";
+        message.focus();
+      }
+
+      const KEYS = [["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["↑", "Up"], ["↓", "Down"], ["←", "Left"], ["→", "Right"],
+        ["Enter", "Enter"], ["Esc", "Escape"], ["Tab", "Tab"], ["⇧Tab", "ShiftTab"], ["Space", "Space"], ["⌫", "Backspace"]];
+      for (const [label, key] of KEYS) {
+        $("#keys").append(button(label, () => {
+          const agent = selectedAgent();
+          if (agent) post(agent.name, "/key", { key });
+        }, key));
       }
 
       function button(label, action, title = "") {
@@ -248,6 +347,8 @@ module Aix
       function select(name) {
         state.selected = name;
         state.title = "";
+        state.screen = { mode: "off", waiting: false, busy: false, screen: "" };
+        state.showScreen = false;
         history.replaceState(null, "", `#${encodeURIComponent(name)}`);
         notice("");
         renderAgents();
@@ -274,6 +375,9 @@ module Aix
             if (message.note) addNote(message.note);
           } else if (message.type === "entries") {
             addEntries(message.entries);
+          } else if (message.type === "screen") {
+            state.screen = message.state;
+            renderComposer();
           }
         };
         socket.onclose = () => {
@@ -319,6 +423,13 @@ module Aix
               } else {
                 box.append(result);
               }
+              break;
+            }
+            case "summary": {
+              const summary = el("div", { class: "msg summary" });
+              summary.innerHTML = entry.html; // markdown, rendered by aix in safe mode
+              box.append(el("details", { class: "summary" },
+                el("summary", {}, "Claude Code's summary of the conversation before"), summary));
               break;
             }
             case "title":
@@ -407,6 +518,17 @@ module Aix
       $("#conversation-tab").addEventListener("click", () => showPane("conversation"));
       $("#file-tab").addEventListener("click", () => showPane("file"));
       $("#file-close").addEventListener("click", closeFile);
+      $("#send").addEventListener("click", send);
+      $("#message").addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          send();
+        }
+      });
+      $("#screen-toggle").addEventListener("click", () => {
+        state.showScreen = !state.showScreen;
+        renderComposer();
+      });
 
       loadAgents();
       setInterval(loadAgents, 5000);

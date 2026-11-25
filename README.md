@@ -126,6 +126,15 @@ Codex conversations aren't shown yet. Start, New and Stop work as in the
 TUI; Terminal opens the first dashboard's view of the agent's screen
 (also at `/classic`), until the page has a terminal of its own.
 
+Under the conversation is a box to write to the agent. Ctrl+Enter or
+Send sends what's in it as one message, line breaks and all (pasted, as
+a terminal pastes, then Enter), but only when the agent's input box is
+empty: into a menu, a permission prompt or a half-written draft, the
+text would do harm. Then the box shows the bottom of the agent's screen
+and a row of keys (1–4, arrows, Enter, Esc, Tab), and what you write is
+typed as keys, without Enter: pick an answer with its number or the
+arrows, or type your own answer and press Enter.
+
 The page can type into agents, so it's guarded. aix prints its address
 when it starts, with a secret in it (`http://127.0.0.1:9292/?token=…`).
 Opening that sets a cookie and moves on to the address without it; the

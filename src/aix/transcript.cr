@@ -25,6 +25,8 @@ module Aix
     #   does) and `input` (its arguments, as text).
     # - `result`: a tool call's result: `id` (the call's), `text`, `error`.
     # - `title`: the conversation's title, as Claude Code named it.
+    # - `summary`: Claude Code's summary of the conversation before a
+    #   compaction (`html`), which it gives the agent as a message.
     # - `note`: a line from aix (`text`).
     record Entry, kind : String, html : String = "", id : String = "", name : String = "",
       summary : String = "", input : String = "", text : String = "", error : Bool = false do
@@ -124,9 +126,10 @@ module Aix
 
     private def self.user_entries(data : JSON::Any) : Array(Entry)
       content = data.dig?("message", "content")
+      kind = data["isCompactSummary"]?.try(&.as_bool?) ? "summary" : "user"
       if text = content.try(&.as_s?)
         shown = strip_reminders(text)
-        return shown.blank? ? [] of Entry : [Entry.new("user", html: markdown(shown))]
+        return shown.blank? ? [] of Entry : [Entry.new(kind, html: markdown(shown))]
       end
       parts(content).compact_map do |part|
         case part["type"]?.try(&.as_s?)

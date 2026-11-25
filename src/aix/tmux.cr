@@ -2,6 +2,12 @@ module Aix
   # Thin wrapper around tmux CLI commands.
   module Tmux
     SESSION = "aix"
+
+    # The session, as a tmux target: exactly it (`=`, where bare `aix`
+    # would match a session `aixtest` when there's no `aix`), and as a
+    # session (`:`, where bare `aix` would be taken first for a window
+    # named `aix`, this project's). A window in it is `TARGET` + `=name`.
+    TARGET = "=#{SESSION}:"
     PLACEHOLDER_WINDOW = "__aix_placeholder__"
 
     # A user option on the pane an agent runs in, so aix finds it however
@@ -39,11 +45,11 @@ module Aix
     def self.configure_session
       # Bind F12 to detach (prefix-free)
       run("bind-key", "-n", "F12", "detach-client")
-      run("set-option", "-t", SESSION, "mouse", "on")
+      run("set-option", "-t", TARGET, "mouse", "on")
       # Scrollback is the person's own (`history-limit` in their tmux.conf).
-      Process.run("tmux", ["set-option", "-u", "-t", SESSION, "history-limit"], error: Process::Redirect::Close)
+      Process.run("tmux", ["set-option", "-u", "-t", TARGET, "history-limit"], error: Process::Redirect::Close)
       # A pane closes when its program exits, but for an agent's (`new_window`).
-      run("set-option", "-t", SESSION, "remain-on-exit", "off")
+      run("set-option", "-t", TARGET, "remain-on-exit", "off")
       bind_files_key
       bind_typing_in_copy_mode
       status_line
@@ -145,11 +151,11 @@ module Aix
                     "\#{T;=/\#{status-right-length}:status-right}\#[pop-default]\#[norange default]"
 
     private def self.status_line
-      run("set-option", "-t", SESSION, "status-left-length", "110")
-      run("set-option", "-t", SESSION, "status-left", STATUS_LEFT)
-      run("set-option", "-t", SESSION, "status-right-length", "80")
-      run("set-option", "-t", SESSION, "status-right", STATUS_RIGHT)
-      run("set-option", "-t", SESSION, "status-format[0]", STATUS_FORMAT)
+      run("set-option", "-t", TARGET, "status-left-length", "110")
+      run("set-option", "-t", TARGET, "status-left", STATUS_LEFT)
+      run("set-option", "-t", TARGET, "status-right-length", "80")
+      run("set-option", "-t", TARGET, "status-right", STATUS_RIGHT)
+      run("set-option", "-t", TARGET, "status-format[0]", STATUS_FORMAT)
     end
 
     # A pane of a window, as aix reads it.
@@ -160,7 +166,7 @@ module Aix
     def self.panes : Array(PaneRow)
       format = "\#{window_name}\t\#{pane_id}\t\#{pane_index}\t\#{pane_pid}\t\#{pane_dead}\t" \
                "\#{#{AGENT_MARK}}\t\#{pane_start_command}"
-      capture("list-panes", "-s", "-t", SESSION, "-F", format).lines.compact_map do |line|
+      capture("list-panes", "-s", "-t", TARGET, "-F", format).lines.compact_map do |line|
         fields = line.split('\t', 7)
         next unless fields.size == 7
         window, id, index, pid, dead, mark, start = fields
@@ -188,7 +194,7 @@ module Aix
     # still tmux's default, the machine's name.
     def self.agent_titles : Hash(String, String)
       format = "\#{window_name}\t\#{#{AGENT_MARK}}\t\#{pane_index}\t\#{host}\t\#{pane_title}"
-      rows = capture("list-panes", "-s", "-t", SESSION, "-F", format).lines.compact_map do |line|
+      rows = capture("list-panes", "-s", "-t", TARGET, "-F", format).lines.compact_map do |line|
         fields = line.split('\t', 5)
         fields.size == 5 ? fields : nil
       end
@@ -236,7 +242,7 @@ module Aix
     # The panes of window `window`: its id (`@3`, as a key binding gives
     # it) or its name in the aix session.
     def self.window_panes(window : String) : Array(WindowPane)
-      target = window.starts_with?('@') ? window : "#{SESSION}:=#{window}"
+      target = window.starts_with?('@') ? window : "#{TARGET}=#{window}"
       format = "\#{window_name}\t\#{pane_id}\t\#{pane_active}\t\#{#{AGENT_MARK}}\t\#{#{FILES_MARK}}\t" \
                "\#{#{FILES_CLIENT}}\t\#{pane_current_path}"
       capture("list-panes", "-t", target, "-F", format).lines.compact_map do |line|
@@ -297,11 +303,11 @@ module Aix
     # The target for window `name`'s agent pane: its id, or the window
     # itself if it can't be read.
     private def self.agent_target(name : String) : String
-      agent_pane(name).try(&.id) || "#{SESSION}:=#{name}"
+      agent_pane(name).try(&.id) || "#{TARGET}=#{name}"
     end
 
     def self.session_exists? : Bool
-      Process.run("tmux", ["has-session", "-t", SESSION],
+      Process.run("tmux", ["has-session", "-t", TARGET],
         error: Process::Redirect::Close).success?
     end
 
@@ -345,7 +351,7 @@ module Aix
       unless pane
         err = IO::Memory.new
         created = IO::Memory.new
-        result = Process.run("tmux", ["new-window", "-P", "-F", "\#{pane_id}", "-t", SESSION,
+        result = Process.run("tmux", ["new-window", "-P", "-F", "\#{pane_id}", "-t", TARGET,
                                       "-n", name, "-c", directory, "--", "sleep", "60"],
           output: created, error: err)
         raise "tmux new-window: #{err.to_s.strip}" unless result.success?
@@ -368,13 +374,13 @@ module Aix
     # Kill the bootstrap window created by ensure_session.
     private def self.kill_placeholder_window
       return unless window_exists?(PLACEHOLDER_WINDOW)
-      Process.run("tmux", ["kill-window", "-t", "#{SESSION}:=#{PLACEHOLDER_WINDOW}"],
+      Process.run("tmux", ["kill-window", "-t", "#{TARGET}=#{PLACEHOLDER_WINDOW}"],
         error: Process::Redirect::Close)
     end
 
     # Kill a window.
     def self.kill_window(name : String)
-      run("kill-window", "-t", "#{SESSION}:=#{name}")
+      run("kill-window", "-t", "#{TARGET}=#{name}")
     end
 
     # Prefix-free key that jumps the attached client back to the Leader window.
@@ -382,7 +388,7 @@ module Aix
 
     # Select a window (make it active). Moves the view of any attached client.
     def self.select_window(name : String)
-      run("select-window", "-t", "#{SESSION}:=#{name}")
+      run("select-window", "-t", "#{TARGET}=#{name}")
     end
 
     # Bind a prefix-free key (root table) to a tmux command.
@@ -393,13 +399,13 @@ module Aix
     # (Re)bind RETURN_TO_LEADER_KEY to jump straight to the Leader's window,
     # and name it on the status line.
     def self.bind_return_to_leader(leader_window : String)
-      bind_key(RETURN_TO_LEADER_KEY, "select-window", "-t", "#{SESSION}:=#{leader_window}")
-      run("set-option", "-t", SESSION, LEAD_OPTION, leader_window)
+      bind_key(RETURN_TO_LEADER_KEY, "select-window", "-t", "#{TARGET}=#{leader_window}")
+      run("set-option", "-t", TARGET, LEAD_OPTION, leader_window)
     end
 
     # Attach to the aix session. Blocks until the user detaches.
     def self.attach
-      Process.run("tmux", ["attach", "-t", SESSION],
+      Process.run("tmux", ["attach", "-t", TARGET],
         input: Process::Redirect::Inherit,
         output: Process::Redirect::Inherit,
         error: Process::Redirect::Inherit)
@@ -407,12 +413,12 @@ module Aix
 
     # Rename a window.
     def self.rename_window(old_name : String, new_name : String)
-      run("rename-window", "-t", "#{SESSION}:=#{old_name}", new_name)
+      run("rename-window", "-t", "#{TARGET}=#{old_name}", new_name)
     end
 
     # List window names in the aix session.
     def self.list_windows : Array(String)
-      output = capture("list-windows", "-t", SESSION, "-F", "#W")
+      output = capture("list-windows", "-t", TARGET, "-F", "#W")
       output.split('\n').reject(&.empty?)
     rescue
       [] of String
@@ -472,7 +478,7 @@ module Aix
 
     # Resize a window to better fit a browser client.
     def self.resize_window(name : String, cols : Int32, rows : Int32)
-      run("resize-window", "-t", "#{SESSION}:=#{name}", "-x", cols.to_s, "-y", rows.to_s)
+      run("resize-window", "-t", "#{TARGET}=#{name}", "-x", cols.to_s, "-y", rows.to_s)
     end
 
     # A pane's state, as the bell needs it: which pane, its process, whether
@@ -521,7 +527,7 @@ module Aix
     # When a client attached to the aix session last had a key from the
     # user, or nil if none is attached.
     def self.last_client_activity : Time?
-      capture("list-clients", "-t", SESSION, "-F", "\#{client_activity}")
+      capture("list-clients", "-t", TARGET, "-F", "\#{client_activity}")
         .lines.compact_map(&.strip.to_i64?).max?.try { |secs| Time.unix(secs) }
     rescue
       nil
@@ -547,6 +553,18 @@ module Aix
     # Type `text` into a pane, then press Enter. The text goes literally, so
     # nothing in it is read as a key name; Enter follows a moment later so
     # the harness doesn't take it as part of a paste.
+    # Paste `text` into `pane_id` as a terminal would: marked as a paste
+    # (bracketed paste, `-p`) when the program asked for that, as Claude
+    # Code and Codex do, so its newlines are part of the text rather than
+    # Enter. Through a buffer of its own, deleted after (`-d`).
+    def self.paste(pane_id : String, text : String)
+      buffer = "aix-paste-#{Random::Secure.hex(6)}"
+      error = IO::Memory.new
+      loaded = Process.run("tmux", ["load-buffer", "-b", buffer, "-"], input: IO::Memory.new(text), error: error)
+      raise "tmux load-buffer: #{error.to_s.strip}" unless loaded.success?
+      run("paste-buffer", "-p", "-d", "-b", buffer, "-t", pane_id)
+    end
+
     def self.type_line(pane_id : String, text : String)
       run("send-keys", "-t", pane_id, "-l", text)
       sleep 150.milliseconds
@@ -555,7 +573,7 @@ module Aix
 
     # Show a message on every client attached to the aix session.
     def self.display_message(text : String, duration : Time::Span = 5.seconds)
-      capture("list-clients", "-t", SESSION, "-F", "\#{client_name}").lines.each do |client|
+      capture("list-clients", "-t", TARGET, "-F", "\#{client_name}").lines.each do |client|
         next if client.strip.empty?
         run("display-message", "-c", client.strip, "-d", duration.total_milliseconds.to_i.to_s, text)
       end
@@ -565,7 +583,7 @@ module Aix
 
     # Clean up — kill the whole session.
     def self.kill_session
-      run("kill-session", "-t", SESSION) if session_exists?
+      run("kill-session", "-t", TARGET) if session_exists?
     end
 
     private def self.rows : Int32

@@ -5,6 +5,7 @@ require "./web_auth"
 require "./web_page"
 require "./transcript"
 require "./project_files"
+require "./sender"
 require "./conversations"
 
 module Aix
@@ -19,6 +20,9 @@ module Aix
     # how often aix looks again at which transcript it is.
     CONVERSATION_INTERVAL = 500.milliseconds
     CONVERSATION_LOOK     = 2.seconds
+
+    # How often the agent's input state is looked at (`Sender.screen`).
+    SCREEN_LOOK = 1.second
 
     @@manager : SessionManager?
     @@lock = Mutex.new
@@ -83,9 +87,27 @@ module Aix
       end
     end
 
+    # Send an agent a message (`{"text": …}`), pasted whole, then Enter,
+    # when its input box is empty (`Sender.message`).
+    post "/api/agents/:name/send" do |env|
+      sent(env, Sender.message(env.params.url["name"], request_payload(env)["text"]?.try(&.as_s?) || ""))
+    end
+
+    # Type into an agent (`{"text": …}`) as keys, without Enter: for an
+    # answer to a menu or a prompt.
+    post "/api/agents/:name/type" do |env|
+      sent(env, Sender.type(env.params.url["name"], request_payload(env)["text"]?.try(&.as_s?) || ""))
+    end
+
+    # Press one key in an agent (`{"key": …}`, one of `Sender::KEYS`).
+    post "/api/agents/:name/key" do |env|
+      sent(env, Sender.press(env.params.url["name"], request_payload(env)["key"]?.try(&.as_s?) || ""))
+    end
+
     # An agent's conversation, from its transcript: what's there (the end
     # of it), then each entry as it's written. When the agent moves to
-    # another conversation, the page starts again (`reset`).
+    # another conversation, the page starts again (`reset`). Its input's
+    # state (`Sender.screen`) comes too, when it changes (`screen`).
     ws "/ws/agents/:name/conversation" do |socket, env|
       name = env.params.url["name"]
       closed = false
@@ -95,6 +117,8 @@ module Aix
         path : String? = nil
         first = true
         looked = Time.instant - 1.minute
+        screened = Time.instant - 1.minute
+        last_screen = ""
         until closed
           begin
             if Time.instant - looked > CONVERSATION_LOOK
@@ -112,6 +136,12 @@ module Aix
             if current = follower
               entries = current.read
               socket.send({type: "entries", entries: entries}.to_json) unless entries.empty?
+            end
+            if Time.instant - screened > SCREEN_LOOK
+              screened = Time.instant
+              screen = {type: "screen", state: Sender.screen(name)}.to_json
+              socket.send(screen) unless screen == last_screen
+              last_screen = screen
             end
           rescue
             break
@@ -313,6 +343,11 @@ module Aix
 
     private def with_lock(&)
       @@lock.synchronize { yield }
+    end
+
+    # The answer to a send: done, or why not (409).
+    private def sent(env, refusal : String?)
+      refusal ? json_response(env, {error: refusal}, 409) : json_response(env, {ok: true})
     end
 
     # The page's own files may load only from aix, and run no script but

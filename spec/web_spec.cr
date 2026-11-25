@@ -14,6 +14,12 @@ describe Aix::Transcript do
     entries[0].html.should_not contain "not theirs"
   end
 
+  it "shows a compaction's summary as a summary, not as the person's message" do
+    entries = Aix::Transcript.entries(line({type: "user", isCompactSummary: true,
+                                            message: {role: "user", content: "This session is being continued…"}}))
+    entries.map(&.kind).should eq ["summary"]
+  end
+
   it "renders markdown safely: no raw HTML, no script links" do
     html = Aix::Transcript.entries(line({type: "assistant", message: {content: [
       {type: "text", text: "<script>alert(1)</script> [x](javascript:alert(1))"},
