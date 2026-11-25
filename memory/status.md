@@ -1,6 +1,6 @@
 # Status
 
-*Updated 2026-11-24*
+*Updated 2026-11-25*
 
 Where Aix stands. The backlog, item by item, is `TODO.md` in the code repo;
 this note is the handoff, not a copy of it.
@@ -75,6 +75,18 @@ Since `v0.2.0` (2026-04-15):
 - `ad16257` (2026-11-24): typing leaves copy mode in the aix session
   (the user still stumbled into it); other sessions keep copy mode's
   keys. Untagged.
+- `9d92e83` (2026-11-25): the web page, the user's idea (2026-11-24:
+  "use tmux to route the console into html… a webui, or perhaps an
+  actual gui application, with the agent/project selection [and] file
+  tree both visible"). Three columns: agents | the conversation, from
+  Claude Code's transcript (markdown rendered, followed live) | files.
+  Also closed a hole found on the way: the old dashboard took typing
+  into agents from any web page (no Origin check, no secret); now a
+  secret cookie, Origin and Host checks. The user: "That's pretty
+  awesome!" (then: centre the chat, larger file tree, done). Next
+  stages, agreed: a live terminal in the page (tmux control mode to
+  xterm.js, kept in aix) and typing from it; Codex conversations; a
+  native window (webview). Untagged.
 
 ## Open: the terminal as aix's face (2026-11-24)
 
