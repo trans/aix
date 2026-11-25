@@ -132,9 +132,10 @@ libcosmic, which has `tab_bar::vertical`; horizontal tabs only, no file
 pane, no remote control) and upstreaming piece by piece. Blocked:
 System76's contributor guide (pop-os/pop CONTRIBUTING.md) refuses LLM
 content in issues and PRs, code, comments and descriptions, so nothing
-of ours can go upstream. The user will file a request for vertical tabs
-in their own words (no issue template; none existing found) "and see
-what they say". **Open**: fork for ourselves, or kitty unmodified (my
+of ours can go upstream. The user filed a request for vertical tabs in
+their own words: pop-os/cosmic-term#966 (2026-11-25), asking whether a
+patch would be welcome. A patch upstream would have to be the user's
+own work, without an AI's help. **Open**: fork for ourselves, or kitty unmodified (my
 recommendation, with yazi in a split).
 
 Tested live: the bell and `aix tell` (@arcana and @chantest, both in aix,
