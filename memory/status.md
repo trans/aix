@@ -118,6 +118,25 @@ per agent, its UI off), kitty as the face (a tab per agent, yazi split);
 unknown: scrollback through tmux. **Undecided**: the user is thinking on
 it ("kitty still doesn't have the file browser though").
 
+2026-11-25: the user stopped the web page's development ("so many small
+issues… would take a long time to perfect"); it stays as in 0.5.0, the
+planned events/terminal/Codex/window stages dropped. Instead: a terminal
+with a vertical tab list (labels aix sets) and ideally a file sidebar,
+as the base for aix's extras. Looked at: Wave (side tabs since 0.14.4,
+file pane, Electron, `wsh` can't type into a tab), Warp (side tabs, file
+tree, closed, no control of open tabs), Konsole (side tabs since 2024,
+D-Bus), kitty 0.49 (side tabs, full remote control, no files), Ghostty
+(Zig; side tabs only in an archived fork). The user then proposed
+forking COSMIC Terminal (Rust, ~9.7k lines, alacritty_terminal and
+libcosmic, which has `tab_bar::vertical`; horizontal tabs only, no file
+pane, no remote control) and upstreaming piece by piece. Blocked:
+System76's contributor guide (pop-os/pop CONTRIBUTING.md) refuses LLM
+content in issues and PRs, code, comments and descriptions, so nothing
+of ours can go upstream. The user will file a request for vertical tabs
+in their own words (no issue template; none existing found) "and see
+what they say". **Open**: fork for ourselves, or kitty unmodified (my
+recommendation, with yazi in a split).
+
 Tested live: the bell and `aix tell` (@arcana and @chantest, both in aix,
 woke each other); Codex's bell in a scratch project in a separate tmux
 server; the user opened onboard with the fixes in their own session ("it
