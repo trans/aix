@@ -1,5 +1,5 @@
 require "json"
-require "./term"
+require "./tmux"
 require "./bell"
 
 module Aix
@@ -39,7 +39,7 @@ module Aix
     end
 
     def self.screen(name : String) : Screen
-      pane = Term.pane_info(name) || return Screen.new("off", false, false, "")
+      pane = Tmux.pane_info(name) || return Screen.new("off", false, false, "")
       input = Bell.input_state(pane)
       mode = input.prompt_empty ? "message" : "keys"
       Screen.new(mode, input.status == "waiting", input.status == "busy", bottom(name))
@@ -51,45 +51,45 @@ module Aix
     def self.message(name : String, text : String) : String?
       text = text.strip
       return "There's nothing to send." if text.empty?
-      pane = Term.pane_info(name) || return "Its agent isn't running."
+      pane = Tmux.pane_info(name) || return "Its agent isn't running."
       input = Bell.input_state(pane)
       if input.status == "waiting"
         return "It's waiting on your answer to a prompt: answer it first (its screen is shown)."
       end
       return "Its input box isn't empty, or it's showing something else: see its screen." unless input.prompt_empty
       return "Its pane is in tmux's #{pane.mode}, which aix couldn't leave." unless ready(pane)
-      Term.paste(pane.id, text)
+      Tmux.paste(pane.id, text)
       sleep 150.milliseconds
-      Term.send_key(name, "Enter")
+      Tmux.send_key(name, "Enter")
       nil
     end
 
     # Type `text` as keys, without Enter.
     def self.type(name : String, text : String) : String?
       return "There's nothing to type." if text.empty?
-      pane = Term.pane_info(name) || return "Its agent isn't running."
+      pane = Tmux.pane_info(name) || return "Its agent isn't running."
       return "Its pane is in tmux's #{pane.mode}, which aix couldn't leave." unless ready(pane)
-      Term.send_literal(name, text)
+      Tmux.send_literal(name, text)
       nil
     end
 
     # Press one of KEYS.
     def self.press(name : String, key : String) : String?
       tmux_key = KEYS[key]? || return "aix doesn't send that key."
-      pane = Term.pane_info(name) || return "Its agent isn't running."
+      pane = Tmux.pane_info(name) || return "Its agent isn't running."
       return "Its pane is in tmux's #{pane.mode}, which aix couldn't leave." unless ready(pane)
-      Term.send_key(name, tmux_key)
+      Tmux.send_key(name, tmux_key)
       nil
     end
 
     # Out of any tmux mode (copy mode), where keys wouldn't reach the agent.
     private def self.ready(pane : Tmux::PaneInfo) : Bool
-      pane.mode.empty? || Term.leave_mode(pane.id)
+      pane.mode.empty? || Tmux.leave_mode(pane.id)
     end
 
     # The last SCREEN_LINES lines of its screen with anything on them.
     private def self.bottom(name : String) : String
-      lines = Term.capture(name).lines.map(&.rstrip)
+      lines = Tmux.capture_pane(name).lines.map(&.rstrip)
       while lines.last?.try(&.empty?)
         lines.pop
       end

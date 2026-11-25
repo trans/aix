@@ -1,4 +1,4 @@
-require "./term"
+require "./tmux"
 require "./harness"
 require "./runner"
 
@@ -72,13 +72,8 @@ module Aix
     # Ring the bell for the agent in tmux window `window`. Returns what
     # happened, and why.
     def self.ring(window : String, text : String = NOTICE) : {Result, String}
-      pane = Term.pane_info(window)
-      unless pane
-        # In kitty, an agent goes on with no tab showing it, and with no
-        # screen to read, the bell can't tell if it's safe to type.
-        return {Result::Held, "no tab shows it, so its screen can't be read"} if Term.running?(window)
-        return {Result::NotOpen, "no window '#{window}' in aix"}
-      end
+      pane = Tmux.pane_info(window)
+      return {Result::NotOpen, "no window '#{window}' in aix"} unless pane
 
       if Harness.channel?(Harness.process_args(pane.pid))
         return {Result::Channel, "started with a channel, which tells it"}
@@ -96,10 +91,10 @@ module Aix
       # In a tmux mode (copy mode, after scrolling back), the keys would go
       # to the mode and never reach the agent. The user isn't typing there
       # (`decide`), so leave it, as Esc would.
-      unless pane.mode.empty? || Term.leave_mode(pane.id)
+      unless pane.mode.empty? || Tmux.leave_mode(pane.id)
         return {Result::Held, "its pane is in tmux's #{pane.mode}, which aix couldn't leave"}
       end
-      Term.type_line(pane.id, text)
+      Tmux.type_line(pane.id, text)
       mark_rung(window)
       {Result::Rung, "typed the notice"}
     end
@@ -114,10 +109,10 @@ module Aix
       record = Runner.record_in_pane(pane.pid)
       if codex?(pane.pid, record)
         InputState.new(record.try(&.state),
-          codex_prompt_empty?(Term.pane_line_styled(pane.id, pane.cursor_y), pane.cursor_x),
+          codex_prompt_empty?(Tmux.pane_line_styled(pane.id, pane.cursor_y), pane.cursor_x),
           "no dot-ai record for it yet (Codex's hooks write one at its first prompt)", true)
       else
-        lines = Term.pane_lines(pane.id, pane.cursor_y - 1, pane.cursor_y + 1)
+        lines = Tmux.pane_lines(pane.id, pane.cursor_y - 1, pane.cursor_y + 1)
         InputState.new(Harness.claude_session_in_pane(pane.pid).try(&.status),
           prompt_empty?(lines, pane.cursor_x),
           "no Claude Code status for it (a startup dialog, or not Claude Code)", false)
@@ -238,7 +233,7 @@ module Aix
     end
 
     private def self.user_active? : Bool
-      last = Term.last_activity
+      last = Tmux.last_client_activity
       !!last && Time.utc - last < USER_ACTIVE_WITHIN
     end
 

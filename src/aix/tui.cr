@@ -124,22 +124,11 @@ module Aix
               show_detail.call(index, "Not resumed: #{refusal}\nn starts a new one.")
             else
               @manager.switch(session.name)
-              begin
-                unless session.running?
-                  session.start(fresh ? [] of String : session.resume_args)
-                  @manager.persist_sessions
-                end
-                if Term.kitty?
-                  # Its tab comes to the front; aix stays in its own, the
-                  # list drawn again to show what changed.
-                  Term.focus(session.name, session.directory)
-                  refresh = true
-                else
-                  selected_name = session.name
-                end
-              rescue ex
-                show_detail.call(index, "Couldn't open it: #{ex.message}")
+              unless session.running?
+                session.start(fresh ? [] of String : session.resume_args)
+                @manager.persist_sessions
               end
+              selected_name = session.name
             end
           end
           nil

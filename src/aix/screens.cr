@@ -1,4 +1,4 @@
-require "./term"
+require "./tmux"
 
 module Aix
   # The last screen of each project's agent, for the TUI's preview: the
@@ -14,7 +14,7 @@ module Aix
     # Capture a running agent's screen and save it. Nil if its window isn't
     # open.
     def self.capture(name : String) : String?
-      text = Term.screen(name) || return nil
+      text = Tmux.capture_screen(name) || return nil
       save(name, text)
       text
     end

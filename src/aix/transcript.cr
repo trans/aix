@@ -54,8 +54,8 @@ module Aix
     end
 
     private def self.running_session_id(window : String) : String?
-      pid = Term.agent_pids.find { |name, _| name == window }.try(&.[1]) || return nil
-      Harness.claude_session_in_pane(pid).try(&.session_id)
+      pane = Tmux.pane_info(window) || return nil
+      Harness.claude_session_in_pane(pane.pid).try(&.session_id)
     end
 
     # Follows a transcript as it grows: `read` gives the entries written

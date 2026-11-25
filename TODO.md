@@ -138,25 +138,15 @@ console.
       and prompts. Tested with Claude Code: a two-line message arrived
       as one; the trust question and a multiple-choice question
       answered from the page, the second with its own words.
-- [-] The web page, next stages (live terminal, Codex conversations, a
-      native window): dropped, the user's call (2026-11-25: "so many
-      small issues… would take a long time to perfect"). The page stays
-      as it is.
-- [x] Agents in kitty tabs instead of tmux windows (user, 2026-11-25),
-      `"terminal": "kitty"`: each in an abduco session, so it outlives
-      its tab and kitty; aix drives kitty by its remote control
-      (`Kitty`, `Abduco`, `Term` choosing between them and tmux). Tabs
-      labelled `@name` over the harness's title by a kitty watcher; a
-      tab attached later has the agent redraw (its terminal resized by a
-      row and back). Tested with a stand-in agent in an off-screen
-      kitty: start, the bell, tab closed and kitty quit (agent kept,
-      bell held), reattach, exit, stop; tmux unchanged.
-- [ ] kitty, next: `F8` (yazi in a split); `aix tell` looking in both
-      tmux and kitty while agents are in each; Claude Code's status in
-      its tab (kitty shows the status protocol, OSC 7501, which Codex
-      sends and Claude Code doesn't: aix's hooks might); whether a
-      redrawn Claude Code sends its title again; F12/F9 equivalents.
-      Then, if kitty wins, tmux out of aix.
+- [ ] The web page, next: a live terminal (tmux's control mode streamed
+      to xterm.js, kept in aix, not from a CDN); Codex conversations
+      (its rollout files); then a native window (a webview).
+- [ ] Codex in the message box: untested. Its empty-input check is the
+      bell's, but whether it takes a bracketed paste whole isn't known.
+- [ ] The user is weighing a terminal with vertical tabs (kitty) as the
+      face, with tmux as hidden plumbing (2026-11-24): one tmux session
+      per agent, one kitty tab per agent, yazi in a split. Unknown:
+      scrollback through tmux. Undecided; the user is thinking on it.
 - [x] `aix --version`, `--help`, and an unknown option refused (it had
       started the TUI), 2026-11-18.
 - [x] The file pane (user, 2026-11-16, for the sidebar browser of

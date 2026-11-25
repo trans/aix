@@ -56,7 +56,7 @@ module Aix
     # The agents, as the page lists them.
     get "/api/agents" do |env|
       elsewhere = Conversations.elsewhere
-      titles = Term.titles
+      titles = Tmux.agent_titles
       agents = with_lock do
         manager.sessions.map { |session| agent_payload(session, elsewhere, titles) }
       end
@@ -320,7 +320,7 @@ module Aix
     end
 
     def run(host : String, port : Int32)
-      Term.ensure
+      Tmux.ensure_session
       auth = WebAuth.new(WebAuth.load_token, host, port)
       config = Kemal.config
       # Every request goes through `WebAuth` first: pages, the API and the
@@ -421,7 +421,7 @@ module Aix
 
     private def session_payload(session : Session, preview_lines : Int32)
       preview = if session.running?
-                  Term.capture(session.name, preview_lines).rstrip
+                  Tmux.capture_pane(session.name, preview_lines).rstrip
                 else
                   ""
                 end
@@ -452,7 +452,7 @@ module Aix
         name: session.name,
         state: session.state.to_s,
         running: session.running?,
-        text: session.running? ? Term.capture(session.name, SNAPSHOT_LINES).rstrip : "",
+        text: session.running? ? Tmux.capture_pane(session.name, SNAPSHOT_LINES).rstrip : "",
       }
     end
 
@@ -464,20 +464,20 @@ module Aix
       when "command"
         text = payload["text"]?.try(&.as_s?) || ""
         return if text.empty?
-        Term.send_literal(name, text)
-        Term.send_key(name, "Enter")
+        Tmux.send_literal(name, text)
+        Tmux.send_key(name, "Enter")
       when "input"
         text = payload["text"]?.try(&.as_s?) || ""
         return if text.empty?
-        Term.send_literal(name, text)
+        Tmux.send_literal(name, text)
       when "key"
         key = normalize_key(payload["key"]?.try(&.as_s?) || "")
-        Term.send_key(name, key) if key
+        Tmux.send_key(name, key) if key
       when "resize"
         cols = payload["cols"]?.try(&.as_i?) || 0
         rows = payload["rows"]?.try(&.as_i?) || 0
         return if cols < 40 || rows < 10
-        Tmux.resize_window(name, cols, rows) unless Term.kitty?
+        Tmux.resize_window(name, cols, rows)
       end
     end
 

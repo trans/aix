@@ -44,14 +44,10 @@ module Aix
     # `"harness": {"/home/me/Projects/x": "codex"}`. A project not listed
     # gets what it's set up for (`Harness.detect`).
     property harnesses : Hash(String, String)
-    # Where agents run (`Term`): `"terminal": "kitty"`, each in a kitty tab
-    # kept alive by abduco, or tmux, the default.
-    property terminal : String
 
     def initialize(@roots : Array(String) = [] of String, @depth : Int32 = DEFAULT_DEPTH,
                    @leader : String? = nil, @mail_channel : Bool = false,
-                   @harnesses : Hash(String, String) = {} of String => String,
-                   @terminal : String = "tmux")
+                   @harnesses : Hash(String, String) = {} of String => String)
     end
 
     # The harness for the project in `directory`.
@@ -121,8 +117,7 @@ module Aix
       raw["harness"]?.try(&.as_h?).try &.each do |dir, name|
         name.as_s?.try { |value| harnesses[dir] = value }
       end
-      terminal = raw["terminal"]?.try(&.as_s?) || "tmux"
-      new(roots, depth, leader, mail_channel || false, harnesses, terminal)
+      new(roots, depth, leader, mail_channel || false, harnesses)
     rescue
       new
     end
@@ -130,7 +125,7 @@ module Aix
     def save
       Dir.mkdir_p(self.class.config_dir)
       File.write(self.class.path, {roots: @roots, depth: @depth, leader: @leader, mail: {channel: @mail_channel},
-                                   harness: @harnesses, terminal: @terminal}.to_json)
+                                   harness: @harnesses}.to_json)
     end
 
     # Add a directory to search: to git config's `ai.path` when the search

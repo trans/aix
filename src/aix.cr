@@ -1,5 +1,4 @@
 require "./aix/tmux"
-require "./aix/term"
 require "./aix/config"
 require "./aix/session"
 require "./aix/session_manager"
@@ -75,13 +74,8 @@ module Aix
 
     repl_mode = ARGV.includes?("--repl")
 
-    # tmux's session made, or kitty reachable (`Term`).
-    begin
-      Term.ensure
-    rescue ex : Kitty::Unavailable
-      STDERR.puts "aix: #{ex.message}"
-      exit 1
-    end
+    # Ensure tmux session exists
+    Tmux.ensure_session
 
     manager = SessionManager.new
     passthrough = Passthrough.new
@@ -92,11 +86,11 @@ module Aix
       run_tui(manager, passthrough)
     end
 
-    # Quitting leaves the agents running: they get on without the TUI, and
-    # `aix` picks them up again. Stop one with `d`. tmux's session goes
-    # only when nothing is left in it.
+    # Quitting leaves the agents running in tmux: they get on without the
+    # TUI, and `aix` picks them up again. Stop one with `d`. The session
+    # goes only when nothing is left in it.
     running = manager.sessions.count(&.running?)
-    Tmux.kill_session if running == 0 && !Term.kitty?
+    Tmux.kill_session if running == 0
     puts running == 0 ? "Goodbye." : "Goodbye. #{running} agent(s) still running; `aix` picks them up again."
   end
 
@@ -120,7 +114,7 @@ module Aix
     puts "#{window}: #{result.to_s.downcase}, #{reason}"
     # Held: the session hears at its next Stop or start. Let the user know
     # meanwhile, since it's usually them it waits on.
-    Term.message("aix: mail for @#{window} (#{reason})") if result.held?
+    Tmux.display_message("aix: mail for @#{window} (#{reason})") if result.held?
     result.exit_status
   end
 
@@ -128,10 +122,10 @@ module Aix
   # runs the session with that id (Claude Code's own session files give its
   # process; dot-ai's record gives it for other harnesses).
   private def self.tell_window(id : String) : String?
-    return id if Term.running?(id)
+    return id if Tmux.window_exists?(id)
     pid = Harness.claude_pid(id) || Runner.session_record(id).try(&.pid) || return nil
     parent = Harness.parent_pid(pid)
-    Term.agent_pids.find { |_name, pane_pid| pane_pid == pid || pane_pid == parent }.try(&.[0])
+    Tmux.window_pids.find { |_name, pane_pid| pane_pid == pid || pane_pid == parent }.try(&.[0])
   end
 
   def self.run_web

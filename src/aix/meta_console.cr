@@ -181,7 +181,7 @@ module Aix
         return
       end
       return if text.empty?
-      Term.send_line(session.name, text)
+      Tmux.send_keys(session.name, text)
       puts "→ @#{name}"
     end
 
@@ -237,7 +237,7 @@ module Aix
         puts "No running session. Switch to one first."
         return
       end
-      Term.send_line(session.name, args)
+      Tmux.send_keys(session.name, args)
     end
 
     private def cmd_peek(args : String?)
@@ -247,7 +247,7 @@ module Aix
         return
       end
       lines = args.try(&.strip.to_i?)
-      puts Term.capture(session.name, lines)
+      puts Tmux.capture_pane(session.name, lines)
     end
 
     private def cmd_shell(cmd : String)
